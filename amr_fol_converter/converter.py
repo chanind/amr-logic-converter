@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, cast
 from typing_extensions import Literal
 import penman
-from penman.models import amr
-from penman.graph import Instance, Edge, Attribute
+from penman.tree import Tree, Node
 
 from amr_fol_converter.types import And, Const, Exists, Formula, Not, Predicate, Var
 
@@ -13,34 +12,28 @@ from amr_fol_converter.types import And, Const, Exists, Formula, Not, Predicate,
 INITIAL_CLOSURE: Callable[[str], Literal[True]] = lambda u: True
 
 
+def normalize_predicate(predicate: Predicate) -> Predicate:
+    # flip :ARGX-of(x,y) to :ARGX(y,x)
+    if (
+        type(predicate.node) is str
+        and predicate.node.endswith("-of")
+        and len(predicate.args) == 2
+    ):
+        return Predicate(predicate.node[:-3], (predicate.args[1], predicate.args[0]))
+    return predicate
+
+
 @dataclass
 class AmrContext:
-    instance_lookup: dict[str, Instance]
-    relations_lookup: dict[str, list[Edge]]
-    attributes_lookup: dict[str, list[Attribute]]
+    instances: frozenset[str]
     # instances coreferenced in multiple places in the graph
     projective_instances: frozenset[str]
-    # projective instances that have already been bound earlier in the parse
-    bound_instances: frozenset[str] = frozenset({})
-
-    def bind_projective_instance(self, instance_name: str) -> AmrContext:
-        """Return a new context with the given projective instance marked as bound."""
-        return AmrContext(
-            self.instance_lookup,
-            self.relations_lookup,
-            self.attributes_lookup,
-            self.projective_instances - {instance_name},
-            self.bound_instances | {instance_name},
-        )
 
     def mark_instance_non_projective(self, instance_name: str) -> AmrContext:
         """Return a new context with the given instance marked as non-projective."""
         return AmrContext(
-            self.instance_lookup,
-            self.relations_lookup,
-            self.attributes_lookup,
+            self.instances,
             self.projective_instances - {instance_name},
-            self.bound_instances,
         )
 
 
@@ -51,112 +44,93 @@ def t_elim(and_terms: list[Formula | Literal[True]]) -> list[Formula]:
 
 def convert_amr_assertive(
     ctx: AmrContext,
-    instance_name: str,
+    node: Node,
     closure: Callable[[str], Formula | Literal[True]],
 ) -> Formula:
-    instance = ctx.instance_lookup[instance_name]
+    instance_name, instance_info = node
+    instance_predicate, *edges = instance_info
     is_projective_instance = instance_name in ctx.projective_instances
-    is_already_bound = instance_name in ctx.bound_instances
     # handle 7.2, 7.6-7.8 from "Expressive Power of Abstract Meaning Representations"
     # ∥x,φ∥↓ = φ(x)
     # ∥(x\P),φ∥↓ = φ(x)
     # ∥(x\P :RiAi),φ∥↓ = φ(x)
     # ∥(x\P :RiAi :polarity–),φ∥↓ = φ(x)
-    if is_projective_instance or is_already_bound:
+    if is_projective_instance:
         # I think in this case it's impossible for the Formula to equal "True"
         return cast(Formula, closure(instance_name))
     bound_var = Var(instance_name)
     polarity = True
     and_terms = [
         closure(instance_name),
-        Predicate(instance.target, (bound_var,)),
+        Predicate(instance_predicate[1], (bound_var,)),
     ]
-    next_ctx = ctx.bind_projective_instance(instance_name)
-    for attribute in ctx.attributes_lookup[instance_name]:
+
+    for role, target in edges:
+        sub_closure = lambda u: normalize_predicate(
+            Predicate(role, (bound_var, Var(u)))
+        )
         # special case for the :polarity - attribute. When this is present,
         # the attribute should be removed but the entire expression should be negated
-        if attribute.role == ":polarity" and attribute.target == "-":
+        if role == ":polarity" and target == "-":
             polarity = False
+        elif type(target) is tuple:
+            and_terms.append(convert_amr_assertive(ctx, target, sub_closure))
+        elif target in ctx.instances:
+            and_terms.append(sub_closure(target))
         else:
             and_terms.append(
-                Predicate(attribute.role, (bound_var, Const(attribute.target)))
+                normalize_predicate(Predicate(role, (bound_var, Const(target))))
             )
-    for edge in ctx.relations_lookup[instance_name]:
-        sub_closure = lambda u: Predicate(edge.role, (bound_var, Var(u)))
-        and_terms.append(convert_amr_assertive(next_ctx, edge.target, sub_closure))
     existence_expr = Exists(bound_var, body=And(tuple(t_elim(and_terms))))
     return existence_expr if polarity else Not(existence_expr)
 
 
 def convert_amr_projective(
     ctx: AmrContext,
-    instance_name: str,
+    node: Node,
 ) -> Callable[[Formula], Formula]:
+    instance_name, instance_info = node
+    edges = instance_info[1:]
     is_projective = instance_name in ctx.projective_instances
     if is_projective:
         # handle 8.6-8.8 from "Expressive Power of Abstract Meaning Representations"
         # ∥(x\P :RiAi)∥↑ = λp.∥(x/P :RiAi),λx.p∥↓
         non_projective_ctx = ctx.mark_instance_non_projective(instance_name)
-        return lambda u: convert_amr_assertive(
-            non_projective_ctx, instance_name, lambda x: u
-        )
+        return lambda u: convert_amr_assertive(non_projective_ctx, node, lambda x: u)
 
     def args_closure(p: Formula) -> Formula:
         # handle 8.3-8.5 from "Expressive Power of Abstract Meaning Representations"
         # ∥(x/P :RiAi)∥↑ = λp.∥A1∥↑(∥A2∥↑( ...∥An∥↑(p)))
-        # don't need to worry about iterating over attributes here because
-        # they only contain constant arguments
+        # don't need to worry about iterating over non-nodes since those are just λp.p
         result = p
-        next_ctx = ctx
-        for edge in ctx.relations_lookup[instance_name]:
-            sub_closure = convert_amr_projective(next_ctx, edge.target)
-            next_ctx = next_ctx.bind_projective_instance(edge.target)
-            result = sub_closure(result)
+        for edge in edges:
+            if type(edge[1]) is tuple:
+                sub_closure = convert_amr_projective(ctx, edge[1])
+                result = sub_closure(result)
         return result
 
     return args_closure
 
 
-def select_graph_root(amr_graph: penman.Graph) -> str:
-    """
-    Select the root of the graph, which is the instance with no edges pointing to it.
-    This is not necessarily where the `top` of the graph is if the graph contains ARGX-of edges.
-    """
-    instance_counts = {instance.source: 0 for instance in amr_graph.instances()}
-    for edge in amr_graph.edges():
-        instance_counts[edge.target] += 1
-    for instance in amr_graph.instances():
-        if instance_counts[instance.source] == 0:
-            return instance.source
-    raise ValueError("No valid root found")
-
-
-def convert_amr_graph(amr_graph: penman.Graph) -> Formula:
-    relations_lookup = defaultdict(list)
-    attributes_lookup = defaultdict(list)
+def convert_amr_tree(amr_tree: Tree) -> Formula:
+    amr_graph = penman.interpret(amr_tree)
+    instances = set()
     reference_counts: dict[str, int] = defaultdict(int)
     for edge in amr_graph.edges():
-        relations_lookup[edge.source].append(edge)
+        instances.add(edge.source)
         reference_counts[edge.target] += 1
-    for attribute in amr_graph.attributes():
-        attributes_lookup[attribute.source].append(attribute)
 
     projective_instances = frozenset(
         [name for name, count in reference_counts.items() if count > 1]
     )
     ctx = AmrContext(
-        instance_lookup={
-            instance.source: instance for instance in amr_graph.instances()
-        },
-        relations_lookup=relations_lookup,
-        attributes_lookup=attributes_lookup,
+        instances=frozenset(instances),
         projective_instances=projective_instances,
     )
-    graph_root = select_graph_root(amr_graph)
-    assertive_amr = convert_amr_assertive(ctx, graph_root, INITIAL_CLOSURE)
-    projective_amr = convert_amr_projective(ctx, graph_root)
+    assertive_amr = convert_amr_assertive(ctx, amr_tree.node, INITIAL_CLOSURE)
+    projective_amr = convert_amr_projective(ctx, amr_tree.node)
     return projective_amr(assertive_amr)
 
 
 def convert_amr_str(amr_str: str) -> Formula:
-    return convert_amr_graph(penman.decode(amr_str, model=amr.model))
+    return convert_amr_tree(penman.parse(amr_str))

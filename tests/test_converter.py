@@ -19,7 +19,7 @@ def test_convert_basic_amr_with_role_inversion() -> None:
         :ARG1-of (e / read-01
             :ARG0 (x / girl)))
     """
-    expected = "∃e(read-01(e) ^ ∃y(:ARG1(e, y) ^ book(y)) ^ ∃x(:ARG0(e, x) ^ girl(x)))"
+    expected = "∃y(book(y) ^ ∃e(:ARG1(e, y) ^ read-01(e) ^ ∃x(:ARG0(e, x) ^ girl(x))))"
     logic = convert_amr_str(amr_str)
     assert str(logic) == expected
 
@@ -31,6 +31,17 @@ def test_convert_amr_with_negation() -> None:
         :ARG0 (x / boy))
     """
     expected = "¬∃e(giggle-01(e) ^ ∃x(:ARG0(e, x) ^ boy(x)))"
+    logic = convert_amr_str(amr_str)
+    assert str(logic) == expected
+
+
+def test_convert_amr_with_negation_maintains_negation_scope_when_inverted() -> None:
+    amr_str = """
+    (x / boy
+        :ARG0-of (e / giggle-01
+        :polarity -))
+    """
+    expected = "∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))"
     logic = convert_amr_str(amr_str)
     assert str(logic) == expected
 
