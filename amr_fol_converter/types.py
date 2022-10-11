@@ -33,7 +33,7 @@ class And:
     args: tuple["Formula", ...]
 
     def __str__(self) -> str:
-        return f"{' & '.join(map(str, self.args))}"
+        return f"{' ^ '.join(map(str, self.args))}"
 
 
 @dataclass
