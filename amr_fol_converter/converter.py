@@ -7,7 +7,7 @@ import penman
 from penman.models import amr
 from penman.graph import Instance, Edge, Attribute
 
-from amr_fol_converter.types import And, Const, Exists, Formula, Predicate, Var
+from amr_fol_converter.types import And, Const, Exists, Formula, Not, Predicate, Var
 
 
 INITIAL_CLOSURE: Callable[[str], Literal[True]] = lambda u: True
@@ -21,9 +21,7 @@ class AmrContext:
 
 
 def t_elim(and_terms: list[Formula | Literal[True]]) -> list[Formula]:
-    """
-    remove True terms from a list of terms to be ANDed together
-    """
+    """remove True terms from a list of terms to be ANDed together"""
     return [term for term in and_terms if term is not True]
 
 
@@ -34,18 +32,25 @@ def convert_amr_recursive(
 ) -> Formula:
     instance = ctx.instance_lookup[instance_name]
     bound_var = Var(instance_name)
+    polarity = True
     and_terms = [
         closure(instance_name),
         Predicate(instance.target, (bound_var,)),
     ]
     for attribute in ctx.attributes_lookup[instance_name]:
-        and_terms.append(
-            Predicate(attribute.role, (bound_var, Const(attribute.target)))
-        )
+        # special case for the :polarity - attribute. When this is present,
+        # the attribute should be removed but the entire expression should be negated
+        if attribute.role == ":polarity" and attribute.target == "-":
+            polarity = False
+        else:
+            and_terms.append(
+                Predicate(attribute.role, (bound_var, Const(attribute.target)))
+            )
     for edge in ctx.relations_lookup[instance_name]:
         sub_closure = lambda u: Predicate(edge.role, (bound_var, Var(u)))
         and_terms.append(convert_amr_recursive(ctx, edge.target, sub_closure))
-    return Exists(bound_var, body=And(tuple(t_elim(and_terms))))
+    existence_expr = Exists(bound_var, body=And(tuple(t_elim(and_terms))))
+    return existence_expr if polarity else Not(existence_expr)
 
 
 def select_graph_root(amr_graph: penman.Graph) -> str:

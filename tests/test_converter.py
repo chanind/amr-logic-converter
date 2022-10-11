@@ -22,3 +22,14 @@ def test_convert_basic_amr_with_role_inversion() -> None:
     expected = "∃e(read-01(e) & ∃y(:ARG1(e, y) & book(y)) & ∃x(:ARG0(e, x) & girl(x)))"
     logic = convert_amr_str(amr_str)
     assert str(logic) == expected
+
+
+def test_convert_amr_with_negation() -> None:
+    amr_str = """
+    (e / giggle-01
+        :polarity -
+        :ARG0 (x / boy))
+    """
+    expected = "¬∃e(giggle-01(e) & ∃x(:ARG0(e, x) & boy(x)))"
+    logic = convert_amr_str(amr_str)
+    assert str(logic) == expected
