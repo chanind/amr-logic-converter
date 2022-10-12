@@ -1,3 +1,3 @@
-# name: test_parse_amr_with_annotation_markers
+# name: test_parse_amr_with_alignment_markers
   Exists(var=Var(name='e'), body=And(args=(Predicate(value='give-01', args=(Var(name='e'),), alignment=Alignment((2,))), Exists(var=Var(name='x'), body=And(args=(Predicate(value=':ARG0', args=(Var(name='e'), Var(name='x')), alignment=None), Predicate(value='person', args=(Var(name='x'),), alignment=None), Predicate(value=':named', args=(Var(name='x'), Const(value='"Ms Ribble"', alignment=Alignment((2,)))), alignment=None)))), Exists(var=Var(name='y'), body=And(args=(Predicate(value=':ARG2', args=(Var(name='e'), Var(name='y')), alignment=None), Predicate(value='child', args=(Var(name='y'),), alignment=Alignment((3,)))))), Exists(var=Var(name='z'), body=And(args=(Predicate(value=':ARG1', args=(Var(name='e'), Var(name='z')), alignment=None), Predicate(value='envelope', args=(Var(name='z'),), alignment=Alignment((4,)))))))))
 # ---
