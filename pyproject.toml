@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "amr-fol-converter"
+name = "amr-logic-converter"
 version = "0.1.0"
 description = ""
 authors = ["David Chanin <chanindav@gmail.com>"]

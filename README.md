@@ -1,1 +1,1 @@
-# amr-fol-converter
+# amr-logic-converter

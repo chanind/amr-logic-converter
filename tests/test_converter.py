@@ -1,4 +1,5 @@
-from amr_fol_converter.converter import convert_amr_str
+from amr_logic_converter.converter import convert_amr_str
+from syrupy.assertion import SnapshotAssertion
 
 
 def test_convert_basic_amr() -> None:
@@ -57,3 +58,17 @@ def test_convert_amr_with_coreference() -> None:
     expected = '∃x(∃e(dry-01(e) ^ :ARG0(e, x) ^ :ARG1(e, x)) ^ person(x) ^ :named(x, "Mr Krupp"))'
     logic = convert_amr_str(amr_str)
     assert str(logic) == expected
+
+
+def test_parse_amr_with_annotation_markers(snapshot: SnapshotAssertion) -> None:
+    amr_str = """
+    (e / give-01~2
+        :ARG0 (x / person :named "Ms Ribble"~2)
+        :ARG2 (y / child~3)
+        :ARG1 (z / envelope~4))
+    """
+    expected = '∃e(give-01(e) ^ ∃x(:ARG0(e, x) ^ person(x) ^ :named(x, "Ms Ribble")) ^ ∃y(:ARG2(e, y) ^ child(y)) ^ ∃z(:ARG1(e, z) ^ envelope(z)))'
+    logic = convert_amr_str(amr_str)
+    assert str(logic) == expected
+    # annotations are included in the logic elements, just using a snapshot assert for convenience
+    assert logic == snapshot

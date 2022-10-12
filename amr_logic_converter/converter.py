@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from typing import Callable, cast
 from typing_extensions import Literal
 import penman
+from penman.models import amr
 from penman.tree import Tree, Node
 
-from amr_fol_converter.types import And, Const, Exists, Formula, Not, Predicate, Var
+from amr_logic_converter.types import And, Const, Exists, Formula, Not, Predicate, Var
 
 
 INITIAL_CLOSURE: Callable[[str], Literal[True]] = lambda u: True
@@ -15,11 +16,11 @@ INITIAL_CLOSURE: Callable[[str], Literal[True]] = lambda u: True
 def normalize_predicate(predicate: Predicate) -> Predicate:
     # flip :ARGX-of(x,y) to :ARGX(y,x)
     if (
-        type(predicate.node) is str
-        and predicate.node.endswith("-of")
+        type(predicate.value) is str
+        and predicate.value.endswith("-of")
         and len(predicate.args) == 2
     ):
-        return Predicate(predicate.node[:-3], (predicate.args[1], predicate.args[0]))
+        return Predicate(predicate.value[:-3], (predicate.args[1], predicate.args[0]))
     return predicate
 
 
@@ -113,7 +114,7 @@ def convert_amr_projective(
 
 
 def convert_amr_tree(amr_tree: Tree) -> Formula:
-    amr_graph = penman.interpret(amr_tree)
+    amr_graph = penman.interpret(amr_tree, model=amr.model)
     instances = set()
     reference_counts: dict[str, int] = defaultdict(int)
     for edge in amr_graph.edges():
