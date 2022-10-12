@@ -1,5 +1,8 @@
-from amr_logic_converter.AmrLogicConverter import AmrLogicConverter
+import penman
+import pytest
 from syrupy.assertion import SnapshotAssertion
+
+from amr_logic_converter import AmrLogicConverter
 
 
 converter = AmrLogicConverter()
@@ -15,6 +18,33 @@ def test_convert_basic_amr() -> None:
     expected = '∃e(give-01(e) ^ ∃x(:ARG0(e, x) ^ person(x) ^ :named(x, "Ms Ribble")) ^ ∃y(:ARG2(e, y) ^ child(y)) ^ ∃z(:ARG1(e, z) ^ envelope(z)))'
     logic = converter.convert(amr_str)
     assert str(logic) == expected
+
+
+def test_convert_works_with_amr_tree() -> None:
+    amr_str = """
+    (e / give-01
+        :ARG0 (x / person :named "Ms Ribble")
+        :ARG1 (z / envelope))
+    """
+    expected = '∃e(give-01(e) ^ ∃x(:ARG0(e, x) ^ person(x) ^ :named(x, "Ms Ribble")) ^ ∃z(:ARG1(e, z) ^ envelope(z)))'
+    logic = converter.convert(penman.parse(amr_str))
+    assert str(logic) == expected
+
+
+def test_convert_works_with_amr_graph() -> None:
+    amr_str = """
+    (e / give-01
+        :ARG0 (x / person :named "Ms Ribble")
+        :ARG1 (z / envelope))
+    """
+    expected = '∃e(give-01(e) ^ ∃x(:ARG0(e, x) ^ person(x) ^ :named(x, "Ms Ribble")) ^ ∃z(:ARG1(e, z) ^ envelope(z)))'
+    logic = converter.convert(penman.decode(amr_str))
+    assert str(logic) == expected
+
+
+def test_convert_errors_on_invalid_input() -> None:
+    with pytest.raises(TypeError):
+        converter.convert(17)
 
 
 def test_convert_basic_amr_with_role_inversion() -> None:
