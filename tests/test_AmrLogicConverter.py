@@ -1,5 +1,8 @@
-from amr_logic_converter.converter import convert_amr_str
+from amr_logic_converter.AmrLogicConverter import AmrLogicConverter
 from syrupy.assertion import SnapshotAssertion
+
+
+converter = AmrLogicConverter()
 
 
 def test_convert_basic_amr() -> None:
@@ -10,7 +13,7 @@ def test_convert_basic_amr() -> None:
         :ARG1 (z / envelope))
     """
     expected = '∃e(give-01(e) ^ ∃x(:ARG0(e, x) ^ person(x) ^ :named(x, "Ms Ribble")) ^ ∃y(:ARG2(e, y) ^ child(y)) ^ ∃z(:ARG1(e, z) ^ envelope(z)))'
-    logic = convert_amr_str(amr_str)
+    logic = converter.convert(amr_str)
     assert str(logic) == expected
 
 
@@ -21,7 +24,21 @@ def test_convert_basic_amr_with_role_inversion() -> None:
             :ARG0 (x / girl)))
     """
     expected = "∃y(book(y) ^ ∃e(:ARG1(e, y) ^ read-01(e) ^ ∃x(:ARG0(e, x) ^ girl(x))))"
-    logic = convert_amr_str(amr_str)
+    logic = converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test_skips_role_inversion_if_specified() -> None:
+    amr_str = """
+    (y / book
+        :ARG1-of (e / read-01
+            :ARG0 (x / girl)))
+    """
+    expected = (
+        "∃y(book(y) ^ ∃e(:ARG1-of(y, e) ^ read-01(e) ^ ∃x(:ARG0(e, x) ^ girl(x))))"
+    )
+    no_inversion_converter = AmrLogicConverter(invert_relations=False)
+    logic = no_inversion_converter.convert(amr_str)
     assert str(logic) == expected
 
 
@@ -32,7 +49,7 @@ def test_convert_amr_with_negation() -> None:
         :ARG0 (x / boy))
     """
     expected = "¬∃e(giggle-01(e) ^ ∃x(:ARG0(e, x) ^ boy(x)))"
-    logic = convert_amr_str(amr_str)
+    logic = converter.convert(amr_str)
     assert str(logic) == expected
 
 
@@ -43,7 +60,7 @@ def test_convert_amr_with_negation_maintains_negation_scope_when_inverted() -> N
         :polarity -))
     """
     expected = "∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))"
-    logic = convert_amr_str(amr_str)
+    logic = converter.convert(amr_str)
     assert str(logic) == expected
 
 
@@ -56,11 +73,11 @@ def test_convert_amr_with_coreference() -> None:
     """
 
     expected = '∃x(∃e(dry-01(e) ^ :ARG0(e, x) ^ :ARG1(e, x)) ^ person(x) ^ :named(x, "Mr Krupp"))'
-    logic = convert_amr_str(amr_str)
+    logic = converter.convert(amr_str)
     assert str(logic) == expected
 
 
-def test_parse_amr_with_annotation_markers(snapshot: SnapshotAssertion) -> None:
+def test_parse_amr_with_alignment_markers(snapshot: SnapshotAssertion) -> None:
     amr_str = """
     (e / give-01~2
         :ARG0 (x / person :named "Ms Ribble"~2)
@@ -68,7 +85,7 @@ def test_parse_amr_with_annotation_markers(snapshot: SnapshotAssertion) -> None:
         :ARG1 (z / envelope~4))
     """
     expected = '∃e(give-01(e) ^ ∃x(:ARG0(e, x) ^ person(x) ^ :named(x, "Ms Ribble")) ^ ∃y(:ARG2(e, y) ^ child(y)) ^ ∃z(:ARG1(e, z) ^ envelope(z)))'
-    logic = convert_amr_str(amr_str)
+    logic = converter.convert(amr_str)
     assert str(logic) == expected
-    # annotations are included in the logic elements, just using a snapshot assert for convenience
+    # alignments are included in the logic elements, just using a snapshot assert for convenience
     assert logic == snapshot
