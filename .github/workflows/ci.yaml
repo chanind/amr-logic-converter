@@ -20,11 +20,26 @@ jobs:
         run: poetry run mypy .
       - name: pytest
         run: poetry run pytest --cov=./ --cov-report=xml
-      # TODO: uncomment when repo is public
-      # - uses: codecov/codecov-action@v2
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
-      #     files: ./coverage.xml
-      #     fail_ci_if_error: true
+      - uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: ./coverage.xml
+          fail_ci_if_error: true
       - name: build
         run: poetry build
+  release:
+    needs: lint_test_and_build
+    # https://github.community/t/how-do-i-specify-job-dependency-running-in-another-workflow/16482
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    concurrency: release
+    steps:
+      - uses: actions/checkout@v3
+      - name: Semantic Release
+        # uses: relekang/python-semantic-release@v7.28.1
+        # temp fix until https://github.com/relekang/python-semantic-release/pull/472 is fixed
+        uses: chanind/python-semantic-release@7-28-1-packaging-fix
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          repository_username: __token__
+          repository_password: ${{ secrets.PYPI_TOKEN }}
