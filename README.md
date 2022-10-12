@@ -1,6 +1,8 @@
 # amr-logic-converter
 
-Convert Abstract Meaning Representation (AMR) to first-order logic statements. This library is based on the ideas in the paper ["Expressive Power of Abstract Meaning Representations", J. Bos, Computational Linguistics 42(3), 2016](http://www.mitpressjournals.org/doi/pdf/10.1162/COLI_a_00257). Thank you to @jobos for the paper!
+Convert Abstract Meaning Representation (AMR) to first-order logic statements.
+
+This library is based on the ideas in the paper ["Expressive Power of Abstract Meaning Representations", J. Bos, Computational Linguistics 42(3), 2016](http://www.mitpressjournals.org/doi/pdf/10.1162/COLI_a_00257). Thank you to @jobos for the paper!
 
 ## Installation
 
