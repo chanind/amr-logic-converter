@@ -107,7 +107,7 @@ def test_convert_amr_with_coreference() -> None:
     assert str(logic) == expected
 
 
-def test_parse_amr_with_alignment_markers(snapshot: SnapshotAssertion) -> None:
+def test_convert_amr_with_alignment_markers(snapshot: SnapshotAssertion) -> None:
     amr_str = """
     (e / give-01~2
         :ARG0 (x / person :named "Ms Ribble"~2)
@@ -121,7 +121,7 @@ def test_parse_amr_with_alignment_markers(snapshot: SnapshotAssertion) -> None:
     assert logic == snapshot
 
 
-def test_nested_coreference() -> None:
+def test_convert_amr_with_nested_coreference() -> None:
     amr_str = """
     (e / dry-01
         :ARG0 (x / person
