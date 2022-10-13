@@ -26,7 +26,7 @@ converter = AmrLogicConverter()
 AMR = """
 (x / boy
     :ARG0-of (e / giggle-01
-    :polarity -))
+        :polarity -))
 """
 
 logic = converter.convert(AMR)
@@ -44,7 +44,7 @@ converter = AmrLogicConverter()
 AMR = """
 (x / boy
     :ARG0-of (e / giggle-01
-    :polarity -))
+        :polarity -))
 """
 
 exist_expr = converter.convert(AMR)
@@ -63,7 +63,7 @@ converter = AmrLogicConverter()
 AMR = """
 (x / boy~1
     :ARG0-of (e / giggle-01~3
-    :polarity -))
+        :polarity -))
 """
 
 exist_expr = converter.convert(AMR)
