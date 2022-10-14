@@ -5,7 +5,7 @@ from syrupy.assertion import SnapshotAssertion
 from amr_logic_converter import AmrLogicConverter
 
 
-converter = AmrLogicConverter()
+converter = AmrLogicConverter(existentially_quantify_instances=True)
 
 
 def test_convert_basic_amr() -> None:
@@ -67,7 +67,9 @@ def test_skips_role_inversion_if_specified() -> None:
     expected = (
         "∃y(book(y) ^ ∃e(:ARG1-of(y, e) ^ read-01(e) ^ ∃x(:ARG0(e, x) ^ girl(x))))"
     )
-    no_inversion_converter = AmrLogicConverter(invert_relations=False)
+    no_inversion_converter = AmrLogicConverter(
+        invert_relations=False, existentially_quantify_instances=True
+    )
     logic = no_inversion_converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -135,3 +137,23 @@ def test_convert_amr_with_nested_coreference() -> None:
     expected = "∃z(∃x(∃e(dry-01(e) ^ :ARG0(e, x) ^ :ARG1(e, z)) ^ person(x) ^ ¬∃g(:ARG0(g, x) ^ giggle-01(g))) ^ dog(z) ^ ∃w(:ARG0(w, z) ^ wash-01(w) ^ :ARG1(w, z)))"
     logic = converter.convert(amr_str)
     assert str(logic) == expected
+
+
+def test_convert_amr_leaves_off_existential_quantifiers_by_default(
+    snapshot: SnapshotAssertion,
+) -> None:
+    amr_str = """
+    (e / dry-01
+        :ARG0 (x / person
+            :ARG0-of (g / giggle-01
+                :polarity - ))
+        :ARG1 (
+            z / dog
+                :ARG0-of (w / wash-01
+                    :ARG1 z)))
+    """
+    non_quantified_converter = AmrLogicConverter()
+    expected = "dry-01(e) ^ :ARG0(e, x) ^ :ARG1(e, z) ^ person(x) ^ ¬(:ARG0(g, x) ^ giggle-01(g)) ^ dog(z) ^ :ARG0(w, z) ^ wash-01(w) ^ :ARG1(w, z)"
+    logic = non_quantified_converter.convert(amr_str)
+    assert str(logic) == expected
+    assert logic == snapshot

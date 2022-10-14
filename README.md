@@ -31,7 +31,7 @@ AMR = """
 
 logic = converter.convert(AMR)
 print(logic)
-# ∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))
+# boy(x) ^ ¬(:ARG0(e, x) ^ giggle-01(e))
 ```
 
 ### Programmatic logic manipulation
@@ -47,10 +47,9 @@ AMR = """
         :polarity -))
 """
 
-exist_expr = converter.convert(AMR)
-type(exist_expr) # <class 'amr_logic_converter.types.Exists'>
-exist_expr.var.name # 'x'
-logic.body.args[0] # Predicate(value='boy', args=(Var(name='x'),), alignment=None)
+expr = converter.convert(AMR)
+type(expr) # <class 'amr_logic_converter.types.And'>
+logic.args[0] # Predicate(value='boy', args=(Const(name='x', type='instance'),), alignment=None)
 ```
 
 ### Working with alignment markers
@@ -66,9 +65,9 @@ AMR = """
         :polarity -))
 """
 
-exist_expr = converter.convert(AMR)
-exist_expr.body.args[0].alignment # Alignment((1,))
-exist_expr.body.args[1].body.body.args[1].alignment # Alignment((3,))
+expr = converter.convert(AMR)
+expr.args[0].alignment # Alignment((1,))
+expr.args[1].body.args[1].alignment # Alignment((3,))
 ```
 
 ## Contributing

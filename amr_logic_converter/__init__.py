@@ -1,7 +1,7 @@
 __version__ = "0.1.1"
 
 from .AmrLogicConverter import AmrLogicConverter
-from .types import And, Const, Exists, Formula, Not, Predicate, Var
+from .types import And, Const, Exists, Formula, Not, Predicate, Param
 
 __all__ = [
     "AmrLogicConverter",
@@ -11,5 +11,5 @@ __all__ = [
     "Formula",
     "Not",
     "Predicate",
-    "Var",
+    "Param",
 ]
