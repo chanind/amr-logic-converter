@@ -72,7 +72,21 @@ expr.args[1].body.args[1].alignment # Alignment((3,))
 
 ### Existentially Quantifying all Instances
 
-In ["Expressive Power of Abstract Meaning Representations"](http://www.mitpressjournals.org/doi/pdf/10.1162/COLI_a_00257), all instances are wrapped by an existence quantifier. By default AmrLogicConverter does not include these as it's likely not useful, but if you'd like to include them as in the paper you can pass the option `
+In ["Expressive Power of Abstract Meaning Representations"](http://www.mitpressjournals.org/doi/pdf/10.1162/COLI_a_00257), all instances are wrapped by an existence quantifier. By default `AmrLogicConverter` does not include these as it's likely not useful, but if you'd like to include them as in the paper you can pass the option `existentially_quantify_instances=True` when constructing the `AmrLogicConverter` as below:
+
+```python
+converter = AmrLogicConverter(existentially_quantify_instances=True)
+
+AMR = """
+(x / boy
+    :ARG0-of (e / giggle-01
+        :polarity -))
+"""
+
+logic = converter.convert(AMR)
+print(logic)
+# ∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))
+```
 
 ## Contributing
 
