@@ -70,6 +70,10 @@ expr.args[0].alignment # Alignment((1,))
 expr.args[1].body.args[1].alignment # Alignment((3,))
 ```
 
+### Existentially Quantifying all Instances
+
+In ["Expressive Power of Abstract Meaning Representations"](http://www.mitpressjournals.org/doi/pdf/10.1162/COLI_a_00257), all instances are wrapped by an existence quantifier. By default AmrLogicConverter does not include these as it's likely not useful, but if you'd like to include them as in the paper you can pass the option `
+
 ## Contributing
 
 Contributions are welcome! Please leave an issue in the Github repo if you find any bugs, and open a pull request with and fixes or improvements that you'd like to contribute. Ideally please include new test cases to verify any changes or bugfixes if appropriate.
