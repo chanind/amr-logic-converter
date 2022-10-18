@@ -34,4 +34,4 @@ def test_imples_adds_parens_to_nested_clauses_when_printing() -> None:
         And((Or((Const("a", "symbol"), Const("b", "symbol"))), Const("c", "symbol"))),
         Const("d", "symbol"),
     )
-    assert str(implies) == "(a ∨ b) ∧ c → d"
+    assert str(implies) == "((a ∨ b) ∧ c) → d"
