@@ -7,7 +7,7 @@ from penman.surface import Alignment
 from .parse_value_and_alignment import parse_value_and_alignment
 
 
-ConstType = Union[Literal["string"], Literal["symbol"], Literal["instance"]]
+ConstType = Literal["string", "symbol", "instance"]
 
 
 @dataclass
