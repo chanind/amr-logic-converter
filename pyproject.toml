@@ -2,7 +2,10 @@
 name = "amr-logic-converter"
 version = "0.3.0"
 description = "Convert Abstract Meaning Representation (AMR) into first-order logic"
+license = "MIT"
+readme = "README.md"
 authors = ["David Chanin <chanindav@gmail.com>"]
+keywords = ["amr", "logic", "first-order-logic", "nlp", "abstract-meaning-representation"]
 
 [tool.poetry.dependencies]
 python = ">=3.7, <4.0"
