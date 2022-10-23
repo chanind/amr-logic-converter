@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.1 (2022-10-23)
+### Fix
+* Adding README and keywords into project toml ([`1e909ac`](https://github.com/chanind/amr-logic-converter/commit/1e909ac155ba89b14566eee6fe8ce040e7c64366))
+
 ## v0.3.0 (2022-10-23)
 ### Feature
 * Removing Const and Param types from Formula ([`94b733f`](https://github.com/chanind/amr-logic-converter/commit/94b733f5b8dfa9e5098049cdfe08461bed697421))
