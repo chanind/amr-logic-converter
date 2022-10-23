@@ -7,7 +7,7 @@ authors = ["David Chanin <chanindav@gmail.com>"]
 [tool.poetry.dependencies]
 python = ">=3.7, <4.0"
 Penman = "^1.2.2"
-typing-extensions = "^4.4.0"
+typing-extensions = "^4.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.3"
