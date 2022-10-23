@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2022-10-23)
+### Feature
+* Removing Const and Param types from Formula ([`94b733f`](https://github.com/chanind/amr-logic-converter/commit/94b733f5b8dfa9e5098049cdfe08461bed697421))
+
 ## v0.2.2 (2022-10-23)
 ### Fix
 * Adding py.typed file ([`3ae0201`](https://github.com/chanind/amr-logic-converter/commit/3ae0201bbf67e5db0692b9101bc7aa9e74525d07))
