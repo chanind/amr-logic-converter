@@ -10,13 +10,13 @@ from penman.graph import Graph
 
 from amr_logic_converter.types import (
     And,
-    Const,
-    ConstType,
+    Constant,
+    ConstantType,
     Exists,
     Formula,
     Not,
     Predicate,
-    Param,
+    Variable,
 )
 
 INITIAL_CLOSURE: Callable[[str], Literal[True]] = lambda u: True
@@ -52,7 +52,7 @@ def t_elim(and_terms: list[Formula | Literal[True]]) -> list[Formula]:
     return [term for term in and_terms if term is not True]
 
 
-def determine_const_type(value: str) -> ConstType:
+def determine_const_type(value: str) -> ConstantType:
     return "string" if value.startswith('"') else "symbol"
 
 
@@ -72,14 +72,17 @@ class AmrLogicConverter:
 
     invert_relations: bool
     existentially_quantify_instances: bool
+    use_variables_for_instances: bool
 
     def __init__(
         self,
         invert_relations: bool = True,
         existentially_quantify_instances: bool = False,
+        use_variables_for_instances: bool = False,
     ) -> None:
         self.invert_relations = invert_relations
         self.existentially_quantify_instances = existentially_quantify_instances
+        self.use_variables_for_instances = use_variables_for_instances
 
     def _convert_amr_assertive(
         self,
@@ -90,6 +93,9 @@ class AmrLogicConverter:
         instance_name, instance_info = node
         instance_predicate, *edges = instance_info
         is_projective_instance = instance_name in ctx.projective_instances
+        use_variables_for_instances = (
+            self.existentially_quantify_instances or self.use_variables_for_instances
+        )
         # handle 7.2, 7.6-7.8 from "Expressive Power of Abstract Meaning Representations"
         # ∥x,φ∥↓ = φ(x)
         # ∥(x\P),φ∥↓ = φ(x)
@@ -98,10 +104,10 @@ class AmrLogicConverter:
         if is_projective_instance:
             # I think in this case it's impossible for the Formula to equal "True"
             return cast(Formula, closure(instance_name))
-        bound_instance: Param | Const = (
-            Param(instance_name)
-            if self.existentially_quantify_instances
-            else Const(instance_name, "instance")
+        bound_instance: Variable | Constant = (
+            Variable(instance_name)
+            if use_variables_for_instances
+            else Constant(instance_name, "instance")
         )
         polarity = True
         and_terms = [
@@ -112,10 +118,10 @@ class AmrLogicConverter:
         for role, target in edges:
 
             def sub_closure(u: str) -> Predicate:
-                target: Param | Const = (
-                    Param(u)
-                    if self.existentially_quantify_instances
-                    else Const(u, "instance")
+                target: Variable | Constant = (
+                    Variable(u)
+                    if use_variables_for_instances
+                    else Constant(u, "instance")
                 )
                 predicate = Predicate(role, (bound_instance, target))
                 return (
@@ -134,7 +140,8 @@ class AmrLogicConverter:
                 and_terms.append(sub_closure(target))
             else:
                 predicate = Predicate(
-                    role, (bound_instance, Const(target, determine_const_type(target)))
+                    role,
+                    (bound_instance, Constant(target, determine_const_type(target))),
                 )
                 and_terms.append(
                     normalize_predicate(predicate)
@@ -143,7 +150,7 @@ class AmrLogicConverter:
                 )
         expr: Formula = And(tuple(t_elim(and_terms)))
         if self.existentially_quantify_instances:
-            expr = Exists(cast(Param, bound_instance), body=expr)
+            expr = Exists(cast(Variable, bound_instance), body=expr)
         return expr if polarity else Not(expr)
 
     def _convert_amr_projective(

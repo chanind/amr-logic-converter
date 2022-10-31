@@ -7,16 +7,16 @@ from penman.surface import Alignment
 from .parse_value_and_alignment import parse_value_and_alignment
 
 
-ConstType = Literal["string", "symbol", "instance"]
+ConstantType = Literal["string", "symbol", "instance"]
 
 
 @dataclass
-class Const:
+class Constant:
     value: str
-    type: ConstType
+    type: ConstantType
     alignment: Alignment | None = None
 
-    def __init__(self, element: str, type: ConstType) -> None:
+    def __init__(self, element: str, type: ConstantType) -> None:
         self.type = type
         self.value, self.alignment = parse_value_and_alignment(element)
         # remove explicit quotes from string literals
@@ -34,7 +34,7 @@ class Const:
 
 
 @dataclass
-class Param:
+class Variable:
     name: str
 
     def __str__(self) -> str:
@@ -44,10 +44,10 @@ class Param:
 @dataclass
 class Predicate:
     value: str
-    args: tuple[Const | Param, ...]
+    args: tuple[Constant | Variable, ...]
     alignment: Alignment | None = None
 
-    def __init__(self, element: str, args: tuple[Const | Param, ...]) -> None:
+    def __init__(self, element: str, args: tuple[Constant | Variable, ...]) -> None:
         self.value, self.alignment = parse_value_and_alignment(element)
         self.args = args
 
@@ -130,7 +130,7 @@ class Implies:
 
 @dataclass
 class Exists:
-    param: Param
+    param: Variable
     body: "Formula"
 
     def __str__(self) -> str:

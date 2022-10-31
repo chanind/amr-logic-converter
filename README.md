@@ -88,6 +88,10 @@ print(logic)
 # ∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))
 ```
 
+### Using Variables for Instances
+
+If you want to use variables for each AMR instance instead of constants, you can pass the option `use_variables_for_instances=True` when creating the AmrLogicConverter instance. When `existentially_quantify_instances` is set, variable will always be used for instances regardless of this setting.
+
 ## Contributing
 
 Contributions are welcome! Please leave an issue in the Github repo if you find any bugs, and open a pull request with and fixes or improvements that you'd like to contribute. Ideally please include new test cases to verify any changes or bugfixes if appropriate.

@@ -157,3 +157,23 @@ def test_convert_amr_leaves_off_existential_quantifiers_by_default(
     logic = non_quantified_converter.convert(amr_str)
     assert str(logic) == expected
     assert logic == snapshot
+
+
+def test_convert_amr_can_replace_instances_with_variables(
+    snapshot: SnapshotAssertion,
+) -> None:
+    amr_str = """
+    (e / dry-01
+        :ARG0 (x / person
+            :ARG0-of (g / giggle-01
+                :polarity - ))
+        :ARG1 (
+            z / dog
+                :ARG0-of (w / wash-01
+                    :ARG1 z)))
+    """
+    variables_converter = AmrLogicConverter(use_variables_for_instances=True)
+    expected = "dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, z) ∧ person(x) ∧ ¬(:ARG0(g, x) ∧ giggle-01(g)) ∧ dog(z) ∧ :ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)"
+    logic = variables_converter.convert(amr_str)
+    assert str(logic) == expected
+    assert logic == snapshot
