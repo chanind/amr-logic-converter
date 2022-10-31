@@ -1,4 +1,4 @@
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 from .AmrLogicConverter import AmrLogicConverter
 from .types import And, Or, Constant, Exists, Formula, Not, Predicate, Variable, Implies
