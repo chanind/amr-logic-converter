@@ -188,6 +188,7 @@ class AmrLogicConverter:
         reference_counts: dict[str, int] = defaultdict(int)
         for edge in amr_graph.edges():
             instances.add(edge.source)
+            instances.add(edge.target)
             reference_counts[edge.target] += 1
 
         projective_instances = frozenset(
