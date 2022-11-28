@@ -137,4 +137,4 @@ class Exists:
         return f"∃{str(self.param)}({str(self.body)})"
 
 
-Formula = Union[Predicate, Not, Exists, And, Or]
+Formula = Union[Predicate, Not, Exists, And, Or, Implies]
