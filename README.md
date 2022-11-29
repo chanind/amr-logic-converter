@@ -88,6 +88,38 @@ print(logic)
 # ∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))
 ```
 
+### Coreference Hoisting
+
+When an instance is coreferenced in multiple places in the AMR, it's necessary to hoisting the existential quantification of that variable high enough that it can still wrap all instances of that variable. By default, the existential quantifier will be hoisted to the level of the lowest common ancestor of all nodes in the AMR tree where an instance is coreferenced. However, in ["Expressive Power of Abstract Meaning Representations"](http://www.mitpressjournals.org/doi/pdf/10.1162/COLI_a_00257), these coreferences are instead hoisted to the maximal possible scope, wrapping the entire formula. If you want this behavior, you can specify the option `maximally_hoist_coreferences=True` when creating the `AmrLogicConverter` instance. This is illustrated below:
+
+```python
+AMR = """
+(b / bad-07
+    :polarity -
+    :ARG1 (e / dry-01
+        :ARG0 (x / person
+            :named "Mr Krupp")
+        :ARG1 x))
+"""
+
+# default behavior, hoist only to the lowest common ancestor
+converter = AmrLogicConverter(
+    existentially_quantify_instances=True,
+)
+logic = converter.convert(AMR)
+print(logic)
+# ¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))))
+
+# maximally hoist coferences
+converter = AmrLogicConverter(
+    existentially_quantify_instances=True,
+    maximally_hoist_coreferences=True,
+)
+logic = converter.convert(AMR)
+print(logic)
+# ∃x(¬∃b(bad-07(b) ∧ ∃e(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))) ∧ person(x) ∧ :named(x, "Mr Krupp"))
+```
+
 ### Using Variables for Instances
 
 If you want to use variables for each AMR instance instead of constants, you can pass the option `use_variables_for_instances=True` when creating the AmrLogicConverter instance. When `existentially_quantify_instances` is set, variable will always be used for instances regardless of this setting.
