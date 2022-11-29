@@ -4,7 +4,7 @@ from collections import defaultdict
 from penman.tree import Node, Tree
 
 
-def find_projective_instances(tree: Tree, instances: frozenset[str]) -> frozenset[str]:
+def find_coreferent_instances(tree: Tree, instances: frozenset[str]) -> frozenset[str]:
     """Find which of the instances provided are projective (co-referenced in multiple places in the tree)"""
     reference_counts: dict[str, int] = defaultdict(int)
     _count_instance_references_inplace(tree.node, instances, reference_counts)
