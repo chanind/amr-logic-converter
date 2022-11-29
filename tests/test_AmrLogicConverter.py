@@ -105,7 +105,7 @@ def test_convert_amr_with_coreference_and_no_subattrs() -> None:
         :ARG1 x)
     """
 
-    expected = "∃e(∃x(person(x)) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))"
+    expected = "∃e(∃x(person(x) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))"
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -118,8 +118,7 @@ def test_convert_amr_with_coreference() -> None:
         :ARG1 x)
     """
 
-    expected = '∃x(∃e(dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)) ∧ person(x) ∧ :named(x, "Mr Krupp"))'
-    expected = '∃e(∃x(person(x) ∧ :named(x, "Mr Krupp")) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))'
+    expected = '∃e(∃x(person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))'
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -214,7 +213,7 @@ def test_convert_amr_with_top_level_negation_and_deep_nesting() -> None:
                 :named "Mr Krupp")
             :ARG1 x))
     """
-    expected = '¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ person(x) ∧ :named(x, "Mr Krupp")) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))'
+    expected = '¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))))'
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 

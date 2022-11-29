@@ -1,12 +1,14 @@
 from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import reduce
 from typing import Callable, Mapping, Optional, cast
 from typing_extensions import Literal
 import penman
 from penman.tree import Tree, Node
 from penman.graph import Graph
 from amr_logic_converter.find_coreferent_instances import find_coreferent_instances
+from amr_logic_converter.find_instance_depths import find_instance_depths
 from amr_logic_converter.map_instances_lca import map_instances_lca
 from amr_logic_converter.map_instances_to_nodes import map_instances_to_nodes
 
@@ -44,6 +46,7 @@ class AmrContext:
     # instances coreferenced in multiple places in the graph
     lca_instances_map: dict[str | None, list[str]]
     instance_node_map: dict[str, Node]
+    instance_depths_map: dict[str, int]
 
     # bound instances
     bound_instances: frozenset[str] = field(default_factory=frozenset)
@@ -55,6 +58,7 @@ class AmrContext:
             self.instances,
             self.lca_instances_map,
             self.instance_node_map,
+            self.instance_depths_map,
             self.bound_instances,
             self.non_projective_instances | {instance_name},
         )
@@ -65,6 +69,7 @@ class AmrContext:
             self.instances,
             self.lca_instances_map,
             self.instance_node_map,
+            self.instance_depths_map,
             self.bound_instances | {instance_name},
             self.non_projective_instances,
         )
@@ -74,6 +79,13 @@ class AmrContext:
 
     def is_instance_bound(self, instance_name: str) -> bool:
         return instance_name in self.bound_instances
+
+    def get_instance_depth(self, instance_name: str) -> int:
+        return self.instance_depths_map[instance_name]
+
+    def get_instances_at_node_scope(self, node: Node | None) -> list[str]:
+        # None as the node means the widest possible scope
+        return self.lca_instances_map[node[0] if node else None]
 
 
 def determine_const_type(value: str) -> ConstantType:
@@ -111,6 +123,17 @@ class AmrLogicConverter:
         self.use_variables_for_instances = use_variables_for_instances
         self.maximally_hoist_coreferences = maximally_hoist_coreferences
 
+    def _get_bound_instance(self, instance_name: str) -> Variable | Constant:
+        use_variables_for_instances = (
+            self.existentially_quantify_instances or self.use_variables_for_instances
+        )
+        bound_instance: Variable | Constant = (
+            Variable(instance_name)
+            if use_variables_for_instances
+            else Constant(instance_name, "instance")
+        )
+        return bound_instance
+
     def _convert_amr_assertive(
         self,
         ctx: AmrContext,
@@ -121,9 +144,6 @@ class AmrLogicConverter:
         instance_predicate, *edges = instance_info
         is_projective_instance = ctx.is_instance_projective(instance_name)
         is_bound_instance = ctx.is_instance_bound(instance_name)
-        use_variables_for_instances = (
-            self.existentially_quantify_instances or self.use_variables_for_instances
-        )
         # handle 7.2, 7.6-7.8 from "Expressive Power of Abstract Meaning Representations"
         # ∥x,φ∥↓ = φ(x)
         # ∥(x\P),φ∥↓ = φ(x)
@@ -131,13 +151,8 @@ class AmrLogicConverter:
         # ∥(x\P :RiAi :polarity–),φ∥↓ = φ(x)
         if is_projective_instance or is_bound_instance:
             return None if closure is None else closure(instance_name)
-        bound_instance: Variable | Constant = (
-            Variable(instance_name)
-            if use_variables_for_instances
-            else Constant(instance_name, "instance")
-        )
+        bound_instance = self._get_bound_instance(instance_name)
         next_ctx = ctx.mark_instance_bound(instance_name)
-        polarity = True
 
         predicate_term = Predicate(instance_predicate[1], (bound_instance,))
         closure_term = closure(instance_name) if closure is not None else None
@@ -146,11 +161,7 @@ class AmrLogicConverter:
         for role, target in edges:
 
             def sub_closure(u: str) -> Predicate:
-                target: Variable | Constant = (
-                    Variable(u)
-                    if use_variables_for_instances
-                    else Constant(u, "instance")
-                )
+                target: Variable | Constant = self._get_bound_instance(u)
                 predicate = Predicate(role, (bound_instance, target))
                 return (
                     normalize_predicate(predicate)
@@ -161,7 +172,7 @@ class AmrLogicConverter:
             # special case for the :polarity - attribute. When this is present,
             # the attribute should be removed but the entire expression should be negated
             if role == ":polarity" and target == "-":
-                polarity = False
+                continue
             elif type(target) is tuple:
                 sub_terms.append(self._convert_amr(next_ctx, target, sub_closure))
             elif target in ctx.instances:
@@ -181,10 +192,44 @@ class AmrLogicConverter:
         if closure_term is not None:
             pre_terms.append(closure_term)
         pre_terms.append(predicate_term)
-        expr: Formula = And(tuple(pre_terms + sub_terms))
-        if self.existentially_quantify_instances:
-            expr = Exists(cast(Variable, bound_instance), body=expr)
-        return expr if polarity else Not(expr)
+        return And(tuple(pre_terms + sub_terms))
+
+    def _quantify_instance(
+        self,
+        ctx: AmrContext,
+        instance_name: str,
+    ) -> Callable[[Formula], Formula]:
+        node = ctx.instance_node_map[instance_name]
+        _instance_predicate, *edges = node[1]
+        bound_instance = self._get_bound_instance(instance_name)
+        polarity = True
+        for role, target in edges:
+            if role == ":polarity" and target == "-":
+                polarity = False
+
+        def quantification_closure(clause: Formula) -> Formula:
+            expr = clause
+            if self.existentially_quantify_instances:
+                expr = Exists(cast(Variable, bound_instance), body=clause)
+            return expr if polarity else Not(expr)
+
+        return quantification_closure
+
+    def _quanitfy_formula(
+        self, ctx: AmrContext, formula: Formula, instances: list[str]
+    ) -> Formula:
+        sorted_instances = sorted(
+            instances,
+            key=lambda instance: ctx.get_instance_depth(instance),
+            reverse=True,
+        )
+        return reduce(
+            lambda formula, instance_name: self._quantify_instance(ctx, instance_name)(
+                formula
+            ),
+            sorted_instances,
+            formula,
+        )
 
     def _convert_amr_projective(
         self,
@@ -231,12 +276,14 @@ class AmrLogicConverter:
         assertive_closure: Optional[Callable[[str], Formula]] = None,
     ) -> Formula:
         projective_closure = self._convert_amr_projective(ctx, node, node)
-        return cast(
+        instances_to_quantify = ctx.get_instances_at_node_scope(node)
+        base_formula = cast(
             Formula,
             projective_closure(
                 self._convert_amr_assertive(ctx, node, assertive_closure)
             ),
         )
+        return self._quanitfy_formula(ctx, base_formula, instances_to_quantify)
 
     def _maximally_project_amr(
         self, ctx: AmrContext, node: Node
@@ -249,6 +296,7 @@ class AmrLogicConverter:
         instances = extract_instances_from_amr_tree(amr_tree)
         coreferent_instances = find_coreferent_instances(amr_tree, instances)
         instance_node_map = map_instances_to_nodes(amr_tree, instances)
+        instance_depths_map = find_instance_depths(amr_tree, instances)
         instance_lca_map: Mapping[str, str | None] = map_instances_lca(
             amr_tree, instances
         )
@@ -262,11 +310,16 @@ class AmrLogicConverter:
             lca_instances_map[lca].append(instance)
         ctx = AmrContext(
             instances=instances,
+            instance_depths_map=instance_depths_map,
             instance_node_map=instance_node_map,
             lca_instances_map=lca_instances_map,
         )
+
+        # special case to handle maximally projected instances
         maximal_projection = self._maximally_project_amr(ctx, amr_tree.node)
-        return maximal_projection(self._convert_amr(ctx, amr_tree.node))
+        formula = maximal_projection(self._convert_amr(ctx, amr_tree.node))
+        maximum_scope_instances = ctx.get_instances_at_node_scope(None)
+        return self._quanitfy_formula(ctx, formula, maximum_scope_instances)
 
     def convert_amr_str(self, amr_str: str) -> Formula:
         return self.convert_amr_tree(penman.parse(amr_str))
