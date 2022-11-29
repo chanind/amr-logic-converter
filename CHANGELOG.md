@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2022-11-28)
+### Fix
+* Fix bug where instances without children are not properly handled ([`8c9156d`](https://github.com/chanind/amr-logic-converter/commit/8c9156d80d49742c6d851b3e3885735c5b69e7e6))
+
+## v0.4.0 (2022-10-31)
+### Feature
+* Adding option to use Var instead of Const for instances ([`028cff3`](https://github.com/chanind/amr-logic-converter/commit/028cff33284e233126be0c372c24d04a335f42eb))
+
 ## v0.3.1 (2022-10-23)
 ### Fix
 * Adding README and keywords into project toml ([`1e909ac`](https://github.com/chanind/amr-logic-converter/commit/1e909ac155ba89b14566eee6fe8ce040e7c64366))
