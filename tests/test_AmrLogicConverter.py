@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import penman
 import pytest
 from syrupy.assertion import SnapshotAssertion
@@ -89,9 +91,21 @@ def test_convert_amr_with_negation_maintains_negation_scope_when_inverted() -> N
     amr_str = """
     (x / boy
         :ARG0-of (e / giggle-01
-        :polarity -))
+            :polarity -))
     """
     expected = "∃x(boy(x) ∧ ¬∃e(:ARG0(e, x) ∧ giggle-01(e)))"
+    logic = converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test_convert_amr_with_coreference_and_no_subattrs() -> None:
+    amr_str = """
+    (e / dry-01
+        :ARG0 (x / person)
+        :ARG1 x)
+    """
+
+    expected = "∃e(∃x(person(x) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))"
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -104,7 +118,7 @@ def test_convert_amr_with_coreference() -> None:
         :ARG1 x)
     """
 
-    expected = '∃x(∃e(dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)) ∧ person(x) ∧ :named(x, "Mr Krupp"))'
+    expected = '∃e(∃x(person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))'
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -134,7 +148,18 @@ def test_convert_amr_with_nested_coreference() -> None:
                 :ARG0-of (w / wash-01
                     :ARG1 z)))
     """
-    expected = "∃z(∃x(∃e(dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, z)) ∧ person(x) ∧ ¬∃g(:ARG0(g, x) ∧ giggle-01(g))) ∧ dog(z) ∧ ∃w(:ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)))"
+    expected = "∃e(dry-01(e) ∧ ∃x(:ARG0(e, x) ∧ person(x) ∧ ¬∃g(:ARG0(g, x) ∧ giggle-01(g))) ∧ ∃z(:ARG1(e, z) ∧ dog(z) ∧ ∃w(:ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z))))"
+    logic = converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test_convert_amr_with_only_coreference() -> None:
+    amr_str = """
+    (s / smurf
+        :ARG0 s
+        :ARG1 s)
+    """
+    expected = "∃s(smurf(s) ∧ :ARG0(s, s) ∧ :ARG1(s, s))"
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -153,7 +178,7 @@ def test_convert_amr_leaves_off_existential_quantifiers_by_default(
                     :ARG1 z)))
     """
     non_quantified_converter = AmrLogicConverter()
-    expected = "dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, z) ∧ person(x) ∧ ¬(:ARG0(g, x) ∧ giggle-01(g)) ∧ dog(z) ∧ :ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)"
+    expected = "dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ ¬(:ARG0(g, x) ∧ giggle-01(g)) ∧ :ARG1(e, z) ∧ dog(z) ∧ :ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)"
     logic = non_quantified_converter.convert(amr_str)
     assert str(logic) == expected
     assert logic == snapshot
@@ -173,7 +198,38 @@ def test_convert_amr_can_replace_instances_with_variables(
                     :ARG1 z)))
     """
     variables_converter = AmrLogicConverter(use_variables_for_instances=True)
-    expected = "dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, z) ∧ person(x) ∧ ¬(:ARG0(g, x) ∧ giggle-01(g)) ∧ dog(z) ∧ :ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)"
+    expected = "dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ ¬(:ARG0(g, x) ∧ giggle-01(g)) ∧ :ARG1(e, z) ∧ dog(z) ∧ :ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)"
     logic = variables_converter.convert(amr_str)
     assert str(logic) == expected
     assert logic == snapshot
+
+
+def test_convert_amr_with_top_level_negation_and_deep_nesting() -> None:
+    amr_str = """
+    (b / bad-07~2
+        :polarity -
+        :ARG1 (e / dry-01
+            :ARG0 (x / person
+                :named "Mr Krupp")
+            :ARG1 x))
+    """
+    expected = '¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))))'
+    logic = converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test_convert_amr_moves_coreferent_vars_to_widest_scope_with_maximally_hoist_coreferences_option() -> None:
+    amr_str = """
+    (b / bad-07~2
+        :polarity -
+        :ARG1 (e / dry-01
+            :ARG0 (x / person
+                :named "Mr Krupp")
+            :ARG1 x))
+    """
+    expected = '∃x(¬∃b(bad-07(b) ∧ ∃e(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))) ∧ person(x) ∧ :named(x, "Mr Krupp"))'
+    max_hoist_converter = AmrLogicConverter(
+        existentially_quantify_instances=True, maximally_hoist_coreferences=True
+    )
+    logic = max_hoist_converter.convert(amr_str)
+    assert str(logic) == expected
