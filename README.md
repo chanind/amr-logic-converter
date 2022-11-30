@@ -85,7 +85,7 @@ AMR = """
 
 logic = converter.convert(AMR)
 print(logic)
-# ∃x(boy(x) ^ ¬∃e(:ARG0(e, x) ^ giggle-01(e)))
+# ∃X(boy(X) ^ ¬∃E(:ARG0(E, X) ^ giggle-01(E)))
 ```
 
 ### Coreference Hoisting
@@ -108,7 +108,7 @@ converter = AmrLogicConverter(
 )
 logic = converter.convert(AMR)
 print(logic)
-# ¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))))
+# ¬∃B(bad-07(B) ∧ ∃E(∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))))
 
 # maximally hoist coferences
 converter = AmrLogicConverter(
@@ -117,12 +117,17 @@ converter = AmrLogicConverter(
 )
 logic = converter.convert(AMR)
 print(logic)
-# ∃x(¬∃b(bad-07(b) ∧ ∃e(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))) ∧ person(x) ∧ :named(x, "Mr Krupp"))
+# ∃X(¬∃B(bad-07(B) ∧ ∃E(:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))) ∧ person(X) ∧ :named(X, "Mr Krupp"))
 ```
 
 ### Using Variables for Instances
 
 If you want to use variables for each AMR instance instead of constants, you can pass the option `use_variables_for_instances=True` when creating the AmrLogicConverter instance. When `existentially_quantify_instances` is set, variable will always be used for instances regardless of this setting.
+
+## Misc Options
+
+- By default variables names are capitalized, but you can change this by setting `capitalize_variables=False`.
+- By default, relations like `:ARG0-of(X, Y)` have their arguments flipped in logic and turned into `:ARG0(Y, X)`. If you don't want this normalization to occur, you can disable this by setting `invert_relations=False`.
 
 ## Contributing
 

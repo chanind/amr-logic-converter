@@ -7,7 +7,9 @@ from syrupy.assertion import SnapshotAssertion
 from amr_logic_converter import AmrLogicConverter
 
 
-converter = AmrLogicConverter(existentially_quantify_instances=True)
+converter = AmrLogicConverter(
+    existentially_quantify_instances=True, capitalize_variables=False
+)
 
 
 def test_convert_basic_amr() -> None:
@@ -60,7 +62,19 @@ def test_convert_basic_amr_with_role_inversion() -> None:
     assert str(logic) == expected
 
 
-def test_skips_role_inversion_if_specified() -> None:
+def test_convert_amr_capitalized_variables_by_default() -> None:
+    amr_str = """
+    (y / book
+        :ARG1-of (e / read-01
+            :ARG0 (x / girl)))
+    """
+    capitalized_converter = AmrLogicConverter(existentially_quantify_instances=True)
+    expected = "∃Y(book(Y) ∧ ∃E(:ARG1(E, Y) ∧ read-01(E) ∧ ∃X(:ARG0(E, X) ∧ girl(X))))"
+    logic = capitalized_converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test__convert_amr_skips_role_inversion_if_specified() -> None:
     amr_str = """
     (y / book
         :ARG1-of (e / read-01
@@ -70,7 +84,9 @@ def test_skips_role_inversion_if_specified() -> None:
         "∃y(book(y) ∧ ∃e(:ARG1-of(y, e) ∧ read-01(e) ∧ ∃x(:ARG0(e, x) ∧ girl(x))))"
     )
     no_inversion_converter = AmrLogicConverter(
-        invert_relations=False, existentially_quantify_instances=True
+        invert_relations=False,
+        existentially_quantify_instances=True,
+        capitalize_variables=False,
     )
     logic = no_inversion_converter.convert(amr_str)
     assert str(logic) == expected
@@ -197,7 +213,10 @@ def test_convert_amr_can_replace_instances_with_variables(
                 :ARG0-of (w / wash-01
                     :ARG1 z)))
     """
-    variables_converter = AmrLogicConverter(use_variables_for_instances=True)
+    variables_converter = AmrLogicConverter(
+        use_variables_for_instances=True,
+        capitalize_variables=False,
+    )
     expected = "dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ ¬(:ARG0(g, x) ∧ giggle-01(g)) ∧ :ARG1(e, z) ∧ dog(z) ∧ :ARG0(w, z) ∧ wash-01(w) ∧ :ARG1(w, z)"
     logic = variables_converter.convert(amr_str)
     assert str(logic) == expected
@@ -229,7 +248,29 @@ def test_convert_amr_moves_coreferent_vars_to_widest_scope_with_maximally_hoist_
     """
     expected = '∃x(¬∃b(bad-07(b) ∧ ∃e(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))) ∧ person(x) ∧ :named(x, "Mr Krupp"))'
     max_hoist_converter = AmrLogicConverter(
-        existentially_quantify_instances=True, maximally_hoist_coreferences=True
+        existentially_quantify_instances=True,
+        maximally_hoist_coreferences=True,
+        capitalize_variables=False,
     )
     logic = max_hoist_converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test_convert_amr_allows_overriding_scope_of_instances() -> None:
+    amr_str = """
+    (b / bad-07~2
+        :polarity -
+        :ARG1 (e / dry-01
+            :ARG0 (x / person
+                :named "Mr Krupp")
+            :ARG1 x))
+    """
+    expected = '∃E(¬∃B(bad-07(B) ∧ ∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp"))) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))'
+    override_scope_converter = AmrLogicConverter(
+        existentially_quantify_instances=True,
+        override_instance_scope=lambda meta: "wide"
+        if meta.instance_name == "e"
+        else None,
+    )
+    logic = override_scope_converter.convert(amr_str)
     assert str(logic) == expected
