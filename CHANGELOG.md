@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.0 (2022-11-30)
+### Feature
+* Hoist coreferenced instances to their lowest common ancestor in the tree ([#2](https://github.com/chanind/amr-logic-converter/issues/2)) ([`6476525`](https://github.com/chanind/amr-logic-converter/commit/64765255b042e27ad9d89c9aaea046e502e58fbf))
+
 ## v0.4.1 (2022-11-28)
 ### Fix
 * Fix bug where instances without children are not properly handled ([`8c9156d`](https://github.com/chanind/amr-logic-converter/commit/8c9156d80d49742c6d851b3e3885735c5b69e7e6))
