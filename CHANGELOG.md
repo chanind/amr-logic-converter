@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.0 (2022-11-30)
+### Feature
+* Adding options for capitalizing variables and overriding variable scope ([#3](https://github.com/chanind/amr-logic-converter/issues/3)) ([`b490948`](https://github.com/chanind/amr-logic-converter/commit/b49094878df6f696de9a7e4c5ffff30164435e1c))
+
 ## v0.5.0 (2022-11-30)
 ### Feature
 * Hoist coreferenced instances to their lowest common ancestor in the tree ([#2](https://github.com/chanind/amr-logic-converter/issues/2)) ([`6476525`](https://github.com/chanind/amr-logic-converter/commit/64765255b042e27ad9d89c9aaea046e502e58fbf))
