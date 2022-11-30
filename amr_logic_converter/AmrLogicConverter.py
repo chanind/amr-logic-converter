@@ -42,6 +42,24 @@ OverrideQuantificationCallback = Callable[
 ]
 
 
+@dataclass
+class OverrideConjunctionCallbackMeta:
+    """Metadata passed to the OverrideConjunctionCallback wtih info about the node being processed"""
+
+    predicate_term: Predicate
+    closure_term: Formula | None
+    subterms: list[Formula]
+    instance_name: str
+    bound_instance: Variable | Constant
+    node: Node
+    amr_tree: Tree
+
+
+OverrideConjunctionCallback = Callable[
+    [Formula, OverrideConjunctionCallbackMeta], Union[Formula, None]
+]
+
+
 def normalize_predicate(predicate: Predicate) -> Predicate:
     # flip :ARGX-of(x,y) to :ARGX(y,x)
     if (
@@ -78,6 +96,7 @@ class AmrLogicConverter:
     capitalize_variables: bool
     override_instance_scope: Optional[OverrideInstanceScopeCallback]
     override_quantification: Optional[OverrideQuantificationCallback]
+    override_conjunction: Optional[OverrideConjunctionCallback]
 
     def __init__(
         self,
@@ -88,6 +107,7 @@ class AmrLogicConverter:
         capitalize_variables: bool = True,
         override_instance_scope: Optional[OverrideInstanceScopeCallback] = None,
         override_quantification: Optional[OverrideQuantificationCallback] = None,
+        override_conjunction: Optional[OverrideConjunctionCallback] = None,
     ) -> None:
         self.invert_relations = invert_relations
         self.capitalize_variables = capitalize_variables
@@ -96,6 +116,7 @@ class AmrLogicConverter:
         self.maximally_hoist_coreferences = maximally_hoist_coreferences
         self.override_instance_scope = override_instance_scope
         self.override_quantification = override_quantification
+        self.override_conjunction = override_conjunction
 
     def _get_bound_instance(self, instance_name: str) -> Variable | Constant:
         use_variables_for_instances = (
@@ -117,14 +138,14 @@ class AmrLogicConverter:
         node: Node,
         closure: Optional[Callable[[str], Formula | None]] = None,
     ) -> Formula | None:
-        instance_name, instance_info = node
-        instance_predicate, *edges = instance_info
-        is_projective_instance = ctx.is_instance_projective(instance_name)
         # handle 7.2, 7.6-7.8 from "Expressive Power of Abstract Meaning Representations"
         # ∥x,φ∥↓ = φ(x)
         # ∥(x\P),φ∥↓ = φ(x)
         # ∥(x\P :RiAi),φ∥↓ = φ(x)
         # ∥(x\P :RiAi :polarity–),φ∥↓ = φ(x)
+        instance_name, instance_info = node
+        instance_predicate, *edges = instance_info
+        is_projective_instance = ctx.is_instance_projective(instance_name)
         if is_projective_instance:
             return None if closure is None else closure(instance_name)
         bound_instance = self._get_bound_instance(instance_name)
@@ -144,8 +165,8 @@ class AmrLogicConverter:
                     else predicate
                 )
 
-            # special case for the :polarity - attribute. When this is present,
-            # the attribute should be removed but the entire expression should be negated
+            # special case for the :polarity - attribute.
+            # skip polarity as is handled in quantification
             if role == ":polarity" and target == "-":
                 continue
             elif type(target) is tuple:
@@ -162,6 +183,20 @@ class AmrLogicConverter:
                     if self.invert_relations
                     else predicate
                 )
+
+        if self.override_conjunction is not None:
+            meta = OverrideConjunctionCallbackMeta(
+                predicate_term=predicate_term,
+                closure_term=closure_term,
+                subterms=sub_terms,
+                instance_name=instance_name,
+                bound_instance=bound_instance,
+                node=node,
+                amr_tree=ctx.amr_tree,
+            )
+            override_result = self.override_conjunction(predicate_term, meta)
+            if override_result is not None:
+                return override_result
 
         pre_terms = []
         if closure_term is not None:

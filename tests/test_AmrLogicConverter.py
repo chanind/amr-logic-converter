@@ -6,7 +6,11 @@ import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from amr_logic_converter import AmrLogicConverter
-from amr_logic_converter.types import All, Variable
+from amr_logic_converter.AmrLogicConverter import (
+    OverrideConjunctionCallbackMeta,
+    OverrideQuantificationCallbackMeta,
+)
+from amr_logic_converter.types import All, And, Formula, Implies, Not, Variable
 
 
 converter = AmrLogicConverter(
@@ -298,3 +302,52 @@ def test_convert_amr_allows_overriding_quantification() -> None:
     )
     logic = override_scope_converter.convert(amr_str)
     assert str(logic) == expected
+
+
+def test_convert_amr_allows_overriding_conjunction() -> None:
+    amr_str = """
+    (b / bad-07~2
+        :polarity -
+        :ARG1 (e / dry-01
+            :ARG0 (x / person
+                :named "Mr Krupp")
+            :ARG1 x))
+    """
+    expected_with_quantifiers = '¬((∃E(∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X)))) → bad-07(B))'
+    expected_without_quantifiers = '¬((:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X)) → bad-07(B))'
+
+    def override_conjunction(
+        _clause: Formula, meta: OverrideConjunctionCallbackMeta
+    ) -> Formula | None:
+        if meta.instance_name != "b":
+            return None
+        antecedents = [*meta.subterms]
+        if meta.closure_term:
+            antecedents.append(meta.closure_term)
+        return Implies(And(tuple(antecedents)), meta.predicate_term)
+
+    def override_quantification(
+        clause: Formula, meta: OverrideQuantificationCallbackMeta
+    ) -> Formula | None:
+        if meta.instance_name != "b":
+            return None
+        return Not(clause) if meta.is_negated else clause
+
+    override_scope_with_quantifiers_converter = AmrLogicConverter(
+        existentially_quantify_instances=True,
+        override_conjunction=override_conjunction,
+        override_quantification=override_quantification,
+    )
+    with_quantifiers_logic = override_scope_with_quantifiers_converter.convert(amr_str)
+    assert str(with_quantifiers_logic) == expected_with_quantifiers
+
+    override_scope_without_quantifiers_converter = AmrLogicConverter(
+        use_variables_for_instances=True,
+        override_conjunction=override_conjunction,
+        override_quantification=override_quantification,
+    )
+    without_quantifiers_logic = override_scope_without_quantifiers_converter.convert(
+        amr_str
+    )
+    print(without_quantifiers_logic)
+    assert str(without_quantifiers_logic) == expected_without_quantifiers

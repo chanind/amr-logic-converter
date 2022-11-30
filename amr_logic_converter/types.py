@@ -108,7 +108,7 @@ class Not:
     body: "Formula"
 
     def __str__(self) -> str:
-        if type(self.body) is And:
+        if type(self.body) in [And, Or, Implies]:
             return f"¬({str(self.body)})"
         return f"¬{str(self.body)}"
 
