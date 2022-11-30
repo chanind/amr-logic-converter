@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.0 (2022-11-30)
+### Feature
+* Allow overriding conjunction ([#5](https://github.com/chanind/amr-logic-converter/issues/5)) ([`582ffda`](https://github.com/chanind/amr-logic-converter/commit/582ffdadabb3774ac41d9e1234e26fb9f8f3dab1))
+
 ## v0.6.0 (2022-11-30)
 ### Feature
 * Adding options for capitalizing variables and overriding variable scope ([#3](https://github.com/chanind/amr-logic-converter/issues/3)) ([`b490948`](https://github.com/chanind/amr-logic-converter/commit/b49094878df6f696de9a7e4c5ffff30164435e1c))
