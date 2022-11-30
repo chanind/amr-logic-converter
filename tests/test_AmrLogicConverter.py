@@ -1,10 +1,12 @@
 from __future__ import annotations
+from typing import cast
 
 import penman
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
 from amr_logic_converter import AmrLogicConverter
+from amr_logic_converter.types import All, Variable
 
 
 converter = AmrLogicConverter(
@@ -269,6 +271,28 @@ def test_convert_amr_allows_overriding_scope_of_instances() -> None:
     override_scope_converter = AmrLogicConverter(
         existentially_quantify_instances=True,
         override_instance_scope=lambda meta: "wide"
+        if meta.instance_name == "e"
+        else None,
+    )
+    logic = override_scope_converter.convert(amr_str)
+    assert str(logic) == expected
+
+
+def test_convert_amr_allows_overriding_quantification() -> None:
+    amr_str = """
+    (b / bad-07~2
+        :polarity -
+        :ARG1 (e / dry-01
+            :ARG0 (x / person
+                :named "Mr Krupp")
+            :ARG1 x))
+    """
+    expected = '¬∃B(bad-07(B) ∧ ∀E(∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))))'
+    override_scope_converter = AmrLogicConverter(
+        existentially_quantify_instances=True,
+        override_quantification=lambda clause, meta: All(
+            cast(Variable, meta.bound_instance), clause
+        )
         if meta.instance_name == "e"
         else None,
     )

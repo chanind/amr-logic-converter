@@ -1,16 +1,19 @@
 from __future__ import annotations
+from dataclasses import dataclass
+
 from functools import reduce
-from typing import Callable, Optional, cast
+from typing import Callable, Optional, Union, cast
 from typing_extensions import Literal
+
 import penman
 from penman.tree import Tree, Node
 from penman.graph import Graph
+
 from amr_logic_converter.AmrContext import (
     AmrContext,
     OverrideInstanceScopeCallback,
     OverrideInstanceScopeCallbackMeta,
 )
-
 from amr_logic_converter.types import (
     And,
     Constant,
@@ -22,7 +25,21 @@ from amr_logic_converter.types import (
     Variable,
 )
 
-INITIAL_CLOSURE: Callable[[str], Literal[True]] = lambda u: True
+
+@dataclass
+class OverrideQuantificationCallbackMeta:
+    """Metadata passed to the OverrideQuantificationCallback wtih info about the node being processed"""
+
+    instance_name: str
+    bound_instance: Variable | Constant
+    node: Node
+    amr_tree: Tree
+    is_negated: bool
+
+
+OverrideQuantificationCallback = Callable[
+    [Formula, OverrideQuantificationCallbackMeta], Union[Formula, None]
+]
 
 
 def normalize_predicate(predicate: Predicate) -> Predicate:
@@ -60,6 +77,7 @@ class AmrLogicConverter:
     maximally_hoist_coreferences: bool
     capitalize_variables: bool
     override_instance_scope: Optional[OverrideInstanceScopeCallback]
+    override_quantification: Optional[OverrideQuantificationCallback]
 
     def __init__(
         self,
@@ -69,6 +87,7 @@ class AmrLogicConverter:
         maximally_hoist_coreferences: bool = False,
         capitalize_variables: bool = True,
         override_instance_scope: Optional[OverrideInstanceScopeCallback] = None,
+        override_quantification: Optional[OverrideQuantificationCallback] = None,
     ) -> None:
         self.invert_relations = invert_relations
         self.capitalize_variables = capitalize_variables
@@ -76,6 +95,7 @@ class AmrLogicConverter:
         self.use_variables_for_instances = use_variables_for_instances
         self.maximally_hoist_coreferences = maximally_hoist_coreferences
         self.override_instance_scope = override_instance_scope
+        self.override_quantification = override_quantification
 
     def _get_bound_instance(self, instance_name: str) -> Variable | Constant:
         use_variables_for_instances = (
@@ -163,6 +183,19 @@ class AmrLogicConverter:
                 polarity = False
 
         def quantification_closure(clause: Formula) -> Formula:
+            if self.override_quantification is not None:
+                override_expr = self.override_quantification(
+                    clause,
+                    OverrideQuantificationCallbackMeta(
+                        node=node,
+                        instance_name=instance_name,
+                        bound_instance=bound_instance,
+                        amr_tree=ctx.amr_tree,
+                        is_negated=not polarity,
+                    ),
+                )
+                if override_expr is not None:
+                    return override_expr
             expr = clause
             if self.existentially_quantify_instances:
                 expr = Exists(cast(Variable, bound_instance), body=clause)

@@ -19,6 +19,7 @@ from amr_logic_converter.map_instances_to_nodes import map_instances_to_nodes
 class OverrideInstanceScopeCallbackMeta:
     """Metadata passed to the OverrideInstanceScopeCallback wtih info about the node being processed"""
 
+    amr_tree: Tree
     instance_name: str
     node: Node
     depth: int
@@ -59,6 +60,7 @@ class AmrContext:
         instance_depths_map = find_instance_depths(amr_tree, instances)
         instance_lca_map = map_instances_lca(amr_tree, instances)
         scope_instance_map = _build_scope_instance_map(
+            amr_tree=amr_tree,
             instance_lca_map=instance_lca_map,
             instance_depths_map=instance_depths_map,
             instance_node_map=instance_node_map,
@@ -96,6 +98,7 @@ class AmrContext:
 
 
 def _build_scope_instance_map(
+    amr_tree: Tree,
     instance_lca_map: dict[str, str],
     instance_depths_map: dict[str, int],
     instance_node_map: dict[str, Node],
@@ -116,6 +119,7 @@ def _build_scope_instance_map(
                 depth=instance_depths_map[instance],
                 is_coreferent=instance in coreferent_instances,
                 is_default_hoisted=lca != instance,
+                amr_tree=amr_tree,
             )
             if override_scope_callback(meta) == "wide":
                 scope = None

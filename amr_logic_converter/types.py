@@ -137,4 +137,13 @@ class Exists:
         return f"∃{str(self.param)}({str(self.body)})"
 
 
-Formula = Union[Predicate, Not, Exists, And, Or, Implies]
+@dataclass
+class All:
+    param: Variable
+    body: "Formula"
+
+    def __str__(self) -> str:
+        return f"∀{str(self.param)}({str(self.body)})"
+
+
+Formula = Union[Predicate, Not, Exists, All, And, Or, Implies]
