@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "amr-logic-converter"
-version = "0.6.0"
+version = "0.7.0"
 description = "Convert Abstract Meaning Representation (AMR) into first-order logic"
 license = "MIT"
 readme = "README.md"

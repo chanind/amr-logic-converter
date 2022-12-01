@@ -347,5 +347,4 @@ def test_convert_amr_allows_overriding_conjunction() -> None:
     without_quantifiers_logic = override_scope_without_quantifiers_converter.convert(
         amr_str
     )
-    print(without_quantifiers_logic)
     assert str(without_quantifiers_logic) == expected_without_quantifiers
