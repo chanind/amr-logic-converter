@@ -7,10 +7,10 @@ from syrupy.assertion import SnapshotAssertion
 
 from amr_logic_converter import AmrLogicConverter
 from amr_logic_converter.AmrLogicConverter import (
-    OverrideConjunctionCallbackMeta,
-    OverrideQuantificationCallbackMeta,
+    OverrideConjunctionCallbackInfo,
+    OverrideQuantificationCallbackInfo,
 )
-from amr_logic_converter.types import All, And, Formula, Implies, Not, Variable
+from amr_logic_converter.types import All, And, Clause, Implies, Not, Variable
 
 
 converter = AmrLogicConverter(
@@ -274,9 +274,7 @@ def test_convert_amr_allows_overriding_scope_of_instances() -> None:
     expected = '∃E(¬∃B(bad-07(B) ∧ ∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp"))) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))'
     override_scope_converter = AmrLogicConverter(
         existentially_quantify_instances=True,
-        override_instance_scope=lambda meta: "wide"
-        if meta.instance_name == "e"
-        else None,
+        override_is_projective=lambda info: True if info.instance_name == "e" else None,
     )
     logic = override_scope_converter.convert(amr_str)
     assert str(logic) == expected
@@ -294,10 +292,10 @@ def test_convert_amr_allows_overriding_quantification() -> None:
     expected = '¬∃B(bad-07(B) ∧ ∀E(∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))))'
     override_scope_converter = AmrLogicConverter(
         existentially_quantify_instances=True,
-        override_quantification=lambda clause, meta: All(
-            cast(Variable, meta.bound_instance), clause
+        override_quantification=lambda clause, info: All(
+            cast(Variable, info.bound_instance), clause
         )
-        if meta.instance_name == "e"
+        if info.instance_name == "e"
         else None,
     )
     logic = override_scope_converter.convert(amr_str)
@@ -317,21 +315,21 @@ def test_convert_amr_allows_overriding_conjunction() -> None:
     expected_without_quantifiers = '¬((:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X)) → bad-07(B))'
 
     def override_conjunction(
-        _clause: Formula, meta: OverrideConjunctionCallbackMeta
-    ) -> Formula | None:
-        if meta.instance_name != "b":
+        _clause: Clause, info: OverrideConjunctionCallbackInfo
+    ) -> Clause | None:
+        if info.instance_name != "b":
             return None
-        antecedents = [*meta.subterms]
-        if meta.closure_term:
-            antecedents.append(meta.closure_term)
-        return Implies(And(tuple(antecedents)), meta.predicate_term)
+        antecedents = [*info.subterms]
+        if info.closure_term:
+            antecedents.append(info.closure_term)
+        return Implies(And(*antecedents), info.predicate_term)
 
     def override_quantification(
-        clause: Formula, meta: OverrideQuantificationCallbackMeta
-    ) -> Formula | None:
-        if meta.instance_name != "b":
+        clause: Clause, info: OverrideQuantificationCallbackInfo
+    ) -> Clause | None:
+        if info.instance_name != "b":
             return None
-        return Not(clause) if meta.is_negated else clause
+        return Not(clause) if info.is_negated else clause
 
     override_scope_with_quantifiers_converter = AmrLogicConverter(
         existentially_quantify_instances=True,

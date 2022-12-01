@@ -2,7 +2,7 @@ from __future__ import annotations
 from penman.surface import Alignment
 
 
-def parse_value_and_alignment(element: str) -> tuple[str, Alignment | None]:
+def parse_symbol_and_alignment(element: str) -> tuple[str, Alignment | None]:
     """Break apart a const element into alignment and value."""
     # based on https://github.com/goodmami/penman/blob/f3b0c423a60f82b13fffeec73fa1a77bf75cd4dc/penman/layout.py#L211
     # this is a private method in penman, so copying it here in case the internal penman API changes

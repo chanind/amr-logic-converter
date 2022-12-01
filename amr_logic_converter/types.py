@@ -4,7 +4,7 @@ from typing import Union
 from typing_extensions import Literal
 from penman.surface import Alignment
 
-from .parse_value_and_alignment import parse_value_and_alignment
+from .parse_symbol_and_alignment import parse_symbol_and_alignment
 
 
 ConstantType = Literal["string", "symbol", "instance"]
@@ -18,7 +18,7 @@ class Constant:
 
     def __init__(self, element: str, type: ConstantType) -> None:
         self.type = type
-        self.value, self.alignment = parse_value_and_alignment(element)
+        self.value, self.alignment = parse_symbol_and_alignment(element)
         # remove explicit quotes from string literals
         if (
             self.type == "string"
@@ -42,26 +42,49 @@ class Variable:
 
 
 @dataclass
-class Predicate:
-    value: str
-    args: tuple[Constant | Variable, ...]
-    alignment: Alignment | None = None
-
-    def __init__(self, element: str, args: tuple[Constant | Variable, ...]) -> None:
-        self.value, self.alignment = parse_value_and_alignment(element)
-        self.args = args
+class Atom:
+    predicate: Predicate
+    terms: tuple[Term, ...]
 
     def __str__(self) -> str:
-        return f"{str(self.value)}({', '.join(map(str, self.args))})"
+        terms_str = ", ".join([str(term) for term in self.terms])
+        return f"{str(self.predicate)}({terms_str})"
+
+    @property
+    def alignment(self) -> Alignment | None:
+        """Helper to make accessing the predicate alignment easier"""
+        return self.predicate.alignment
+
+    @property
+    def symbol(self) -> str:
+        """Helper to make accessing the predicate symbol easier"""
+        return self.predicate.symbol
+
+
+@dataclass
+class Predicate:
+    symbol: str
+    alignment: Alignment | None = None
+
+    @classmethod
+    def from_amr_str(cls, amr_str: str) -> Predicate:
+        symbol, alignment = parse_symbol_and_alignment(amr_str)
+        return cls(symbol, alignment)
+
+    def __call__(self, *terms: Term) -> Atom:
+        return Atom(self, terms)
+
+    def __str__(self) -> str:
+        return self.symbol
 
 
 @dataclass
 class And:
-    args: tuple["Formula", ...]
+    args: tuple["Clause", ...]
 
-    def __init__(self, args: tuple["Formula", ...]) -> None:
+    def __init__(self, *args: "Clause") -> None:
         # automatically reduce repeated ANDs
-        simplified_args: list["Formula"] = []
+        simplified_args: list["Clause"] = []
         for arg in args:
             if type(arg) is And:
                 simplified_args.extend(arg.args)
@@ -81,11 +104,11 @@ class And:
 
 @dataclass
 class Or:
-    args: tuple["Formula", ...]
+    args: tuple["Clause", ...]
 
-    def __init__(self, args: tuple["Formula", ...]) -> None:
+    def __init__(self, *args: "Clause") -> None:
         # automatically reduce repeated ORs
-        simplified_args: list["Formula"] = []
+        simplified_args: list["Clause"] = []
         for arg in args:
             if type(arg) is Or:
                 simplified_args.extend(arg.args)
@@ -105,7 +128,7 @@ class Or:
 
 @dataclass
 class Not:
-    body: "Formula"
+    body: "Clause"
 
     def __str__(self) -> str:
         if type(self.body) in [And, Or, Implies]:
@@ -115,8 +138,8 @@ class Not:
 
 @dataclass
 class Implies:
-    antecedent: "Formula"
-    consequent: "Formula"
+    antecedent: "Clause"
+    consequent: "Clause"
 
     def __str__(self) -> str:
         antecedent_str = str(self.antecedent)
@@ -131,7 +154,7 @@ class Implies:
 @dataclass
 class Exists:
     param: Variable
-    body: "Formula"
+    body: "Clause"
 
     def __str__(self) -> str:
         return f"∃{str(self.param)}({str(self.body)})"
@@ -140,10 +163,11 @@ class Exists:
 @dataclass
 class All:
     param: Variable
-    body: "Formula"
+    body: "Clause"
 
     def __str__(self) -> str:
         return f"∀{str(self.param)}({str(self.body)})"
 
 
-Formula = Union[Predicate, Not, Exists, All, And, Or, Implies]
+Clause = Union[Atom, Not, Exists, All, And, Or, Implies]
+Term = Union[Constant, Variable]

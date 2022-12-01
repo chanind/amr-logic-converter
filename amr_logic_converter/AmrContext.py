@@ -2,7 +2,6 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from typing import Callable, Optional
-from typing_extensions import Literal
 
 from penman.tree import Node, Tree
 
@@ -16,8 +15,8 @@ from amr_logic_converter.map_instances_to_nodes import map_instances_to_nodes
 
 
 @dataclass
-class OverrideInstanceScopeCallbackMeta:
-    """Metadata passed to the OverrideInstanceScopeCallback wtih info about the node being processed"""
+class OverrideIsProjectiveCallbackInfo:
+    """Metadata passed to the OverrideIsProjectiveCallback wtih info about the node being processed"""
 
     amr_tree: Tree
     instance_name: str
@@ -27,8 +26,8 @@ class OverrideInstanceScopeCallbackMeta:
     is_default_hoisted: bool
 
 
-OverrideInstanceScopeCallback = Callable[
-    [OverrideInstanceScopeCallbackMeta], Optional[Literal["wide", "default"]]
+OverrideIsProjectiveCallback = Callable[
+    [OverrideIsProjectiveCallbackInfo], Optional[bool]
 ]
 
 
@@ -52,7 +51,7 @@ class AmrContext:
     def from_amr_tree(
         cls,
         amr_tree: Tree,
-        override_instance_scope: Optional[OverrideInstanceScopeCallback] = None,
+        override_is_projective: Optional[OverrideIsProjectiveCallback] = None,
     ) -> AmrContext:
         instances = extract_instances_from_amr_tree(amr_tree)
         coreferent_instances = find_coreferent_instances(amr_tree, instances)
@@ -65,7 +64,7 @@ class AmrContext:
             instance_depths_map=instance_depths_map,
             instance_node_map=instance_node_map,
             coreferent_instances=coreferent_instances,
-            override_scope_callback=override_instance_scope,
+            override_is_projective_callback=override_is_projective,
         )
         return cls(
             amr_tree=amr_tree,
@@ -103,17 +102,17 @@ def _build_scope_instance_map(
     instance_depths_map: dict[str, int],
     instance_node_map: dict[str, Node],
     coreferent_instances: frozenset[str],
-    override_scope_callback: Optional[OverrideInstanceScopeCallback],
+    override_is_projective_callback: Optional[OverrideIsProjectiveCallback],
 ) -> dict[str | None, list[str]]:
     """
     Build a map of the scope (instance name of the node in the tree this variable should be scoped) to a list of instances
-    Takes into account any overrides provided by the override_scope_callback
+    Takes into account any overrides provided by the override_is_projective_callback
     """
     instance_scope_map = {}
     for instance, lca in instance_lca_map.items():
         scope: str | None = lca
-        if override_scope_callback:
-            meta = OverrideInstanceScopeCallbackMeta(
+        if override_is_projective_callback:
+            info = OverrideIsProjectiveCallbackInfo(
                 instance_name=instance,
                 node=instance_node_map[instance],
                 depth=instance_depths_map[instance],
@@ -121,7 +120,7 @@ def _build_scope_instance_map(
                 is_default_hoisted=lca != instance,
                 amr_tree=amr_tree,
             )
-            if override_scope_callback(meta) == "wide":
+            if override_is_projective_callback(info) is True:
                 scope = None
         instance_scope_map[instance] = scope
 
