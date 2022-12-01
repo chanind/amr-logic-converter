@@ -49,7 +49,7 @@ AMR = """
 
 expr = converter.convert(AMR)
 type(expr) # <class 'amr_logic_converter.types.And'>
-logic.args[0] # Predicate(value='boy', args=(Const(name='x', type='instance'),), alignment=None)
+expr.args[0] # Atom(predicate=Predicate(symbol='boy', alignment=None), terms=(Constant(value='x', type='instance', alignment=None),))
 ```
 
 ### Working with alignment markers
