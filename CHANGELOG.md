@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.0 (2022-12-04)
+### Feature
+* Removing unnecessary param from override_conjunction ([`155452a`](https://github.com/chanind/amr-logic-converter/commit/155452a0c1df1bd4f461a3c0e1d49fd1d1e6aacd))
+
 ## v0.9.0 (2022-12-04)
 ### Feature
 * Adding an option to turn :condition into implies ([#7](https://github.com/chanind/amr-logic-converter/issues/7)) ([`1b2f042`](https://github.com/chanind/amr-logic-converter/commit/1b2f0425a34a26828e7adf2f48df8c33eb42180e))
