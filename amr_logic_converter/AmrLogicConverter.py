@@ -60,7 +60,7 @@ class OverrideConjunctionCallbackInfo:
 
 
 OverrideConjunctionCallback = Callable[
-    [Clause, OverrideConjunctionCallbackInfo], Union[Clause, None]
+    [OverrideConjunctionCallbackInfo], Union[Clause, None]
 ]
 
 
@@ -218,7 +218,7 @@ class AmrLogicConverter:
                 node=node,
                 amr_tree=ctx.amr_tree,
             )
-            override_result = self.override_conjunction(predicate_term, info)
+            override_result = self.override_conjunction(info)
             if override_result is not None:
                 return override_result
 

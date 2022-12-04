@@ -319,9 +319,7 @@ def test_convert_amr_allows_overriding_conjunction() -> None:
     expected_with_quantifiers = '¬((∃E(∃X(:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ :ARG1(E, X)))) → bad-07(B))'
     expected_without_quantifiers = '¬((:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ :ARG1(E, X)) → bad-07(B))'
 
-    def override_conjunction(
-        _clause: Clause, info: OverrideConjunctionCallbackInfo
-    ) -> Clause | None:
+    def override_conjunction(info: OverrideConjunctionCallbackInfo) -> Clause | None:
         if info.instance_name != "b":
             return None
         antecedents = [*info.subterms]
