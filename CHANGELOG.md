@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.9.0 (2022-12-04)
+### Feature
+* Adding an option to turn :condition into implies ([#7](https://github.com/chanind/amr-logic-converter/issues/7)) ([`1b2f042`](https://github.com/chanind/amr-logic-converter/commit/1b2f0425a34a26828e7adf2f48df8c33eb42180e))
+
 ## v0.8.0 (2022-12-01)
 ### Feature
 * Simplify logic types and callbacks ([#6](https://github.com/chanind/amr-logic-converter/issues/6)) ([`d9b9f82`](https://github.com/chanind/amr-logic-converter/commit/d9b9f822da5fe681ac50ae0ca9f8fbcc942a81ae))
