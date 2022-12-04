@@ -11,6 +11,7 @@ from amr_logic_converter.AmrLogicConverter import (
     OverrideQuantificationCallbackInfo,
 )
 from amr_logic_converter.types import All, And, Clause, Implies, Not, Variable
+from tests.test_utils import fmt_logic
 
 
 converter = AmrLogicConverter(
@@ -127,7 +128,7 @@ def test_convert_amr_with_coreference_and_no_subattrs() -> None:
         :ARG1 x)
     """
 
-    expected = "∃e(∃x(person(x) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))"
+    expected = "∃e(∃x(dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ :ARG1(e, x)))"
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -140,8 +141,9 @@ def test_convert_amr_with_coreference() -> None:
         :ARG1 x)
     """
 
-    expected = '∃e(∃x(person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x)))'
+    expected = '∃e(∃x(dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ :ARG1(e, x)))'
     logic = converter.convert(amr_str)
+    print(logic)
     assert str(logic) == expected
 
 
@@ -183,6 +185,7 @@ def test_convert_amr_with_only_coreference() -> None:
     """
     expected = "∃s(smurf(s) ∧ :ARG0(s, s) ∧ :ARG1(s, s))"
     logic = converter.convert(amr_str)
+    print(logic)
     assert str(logic) == expected
 
 
@@ -238,7 +241,7 @@ def test_convert_amr_with_top_level_negation_and_deep_nesting() -> None:
                 :named "Mr Krupp")
             :ARG1 x))
     """
-    expected = '¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))))'
+    expected = '¬∃b(bad-07(b) ∧ ∃e(∃x(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ :ARG1(e, x))))'
     logic = converter.convert(amr_str)
     assert str(logic) == expected
 
@@ -252,7 +255,7 @@ def test_convert_amr_moves_coreferent_vars_to_widest_scope_with_maximally_hoist_
                 :named "Mr Krupp")
             :ARG1 x))
     """
-    expected = '∃x(¬∃b(bad-07(b) ∧ ∃e(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ :ARG1(e, x))) ∧ person(x) ∧ :named(x, "Mr Krupp"))'
+    expected = '∃x(¬∃b(bad-07(b) ∧ ∃e(:ARG1(b, e) ∧ dry-01(e) ∧ :ARG0(e, x) ∧ person(x) ∧ :named(x, "Mr Krupp") ∧ :ARG1(e, x))))'
     max_hoist_converter = AmrLogicConverter(
         existentially_quantify_instances=True,
         maximally_hoist_coreferences=True,
@@ -271,12 +274,13 @@ def test_convert_amr_allows_overriding_scope_of_instances() -> None:
                 :named "Mr Krupp")
             :ARG1 x))
     """
-    expected = '∃E(¬∃B(bad-07(B) ∧ ∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp"))) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))'
+    expected = '∃E(¬∃B(bad-07(B) ∧ ∃X(:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ :ARG1(E, X))))'
     override_scope_converter = AmrLogicConverter(
         existentially_quantify_instances=True,
         override_is_projective=lambda info: True if info.instance_name == "e" else None,
     )
     logic = override_scope_converter.convert(amr_str)
+    print(logic)
     assert str(logic) == expected
 
 
@@ -289,7 +293,7 @@ def test_convert_amr_allows_overriding_quantification() -> None:
                 :named "Mr Krupp")
             :ARG1 x))
     """
-    expected = '¬∃B(bad-07(B) ∧ ∀E(∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X))))'
+    expected = '¬∃B(bad-07(B) ∧ ∀E(∃X(:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ :ARG1(E, X))))'
     override_scope_converter = AmrLogicConverter(
         existentially_quantify_instances=True,
         override_quantification=lambda clause, info: All(
@@ -299,6 +303,7 @@ def test_convert_amr_allows_overriding_quantification() -> None:
         else None,
     )
     logic = override_scope_converter.convert(amr_str)
+    print(logic)
     assert str(logic) == expected
 
 
@@ -311,8 +316,8 @@ def test_convert_amr_allows_overriding_conjunction() -> None:
                 :named "Mr Krupp")
             :ARG1 x))
     """
-    expected_with_quantifiers = '¬((∃E(∃X(:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X)))) → bad-07(B))'
-    expected_without_quantifiers = '¬((:ARG1(B, E) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ dry-01(E) ∧ :ARG0(E, X) ∧ :ARG1(E, X)) → bad-07(B))'
+    expected_with_quantifiers = '¬((∃E(∃X(:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ :ARG1(E, X)))) → bad-07(B))'
+    expected_without_quantifiers = '¬((:ARG1(B, E) ∧ dry-01(E) ∧ :ARG0(E, X) ∧ person(X) ∧ :named(X, "Mr Krupp") ∧ :ARG1(E, X)) → bad-07(B))'
 
     def override_conjunction(
         _clause: Clause, info: OverrideConjunctionCallbackInfo
@@ -348,3 +353,36 @@ def test_convert_amr_allows_overriding_conjunction() -> None:
         amr_str
     )
     assert str(without_quantifiers_logic) == expected_without_quantifiers
+
+
+def test_convert_amr_with_conditionals() -> None:
+    amr_str = """
+    (s / sing-01
+        :ARG0 (b / boy)
+        :condition (g / give-01
+            :ARG1 (m / money)
+            :ARG2 b))
+    """
+    expected = """
+    ∃S(
+        ∃B(
+            ∃G(
+                give-01(G) ∧
+                ∃M(
+                    :ARG1(G, M) ∧ money(M)
+                ) ∧
+                :ARG2(G, B) ∧
+                boy(B)
+            ) → (
+                sing-01(S) ∧ :ARG0(S, B)
+            )
+        )
+    )
+    """
+    implication_converter = AmrLogicConverter(
+        existentially_quantify_instances=True,
+        use_implies_for_conditions=True,
+        use_variables_for_instances=True,
+    )
+    logic = implication_converter.convert(amr_str)
+    assert fmt_logic(str(logic)) == fmt_logic(expected)
