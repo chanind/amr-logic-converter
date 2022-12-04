@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
-from dataclasses import dataclass, field, replace
-from typing import Callable, Optional
+from dataclasses import dataclass, field
+from typing import Callable, Iterable, Optional
 
 from penman.tree import Node, Tree
 
@@ -44,8 +44,9 @@ class AmrContext:
     instance_depths_map: dict[str, int]
     # a map of the scope (instance name of the node in the tree this variable should be scoped) to a list of instances
     # `None` as the scope means the instance should be scoped around the entire tree
-    scope_instance_map: dict[str | None, list[str]]
-    non_projective_instances: frozenset[str] = field(default_factory=frozenset)
+    scope_instance_map: dict[str | None, set[str]]
+    rendered_instances: set[str] = field(default_factory=set)
+    quantified_instances: set[str] = field(default_factory=set)
 
     @classmethod
     def from_amr_tree(
@@ -75,25 +76,34 @@ class AmrContext:
             scope_instance_map=scope_instance_map,
         )
 
-    def mark_instance_non_projective(self, instance_name: str) -> AmrContext:
-        """Return a new context with the given instance marked as non-projective."""
-        return replace(
-            self,
-            non_projective_instances=self.non_projective_instances | {instance_name},
-        )
+    def mark_instance_rendered(self, instance_name: str) -> None:
+        """Mark the instance as rendered in-place."""
+        self.rendered_instances.add(instance_name)
+
+    def mark_instances_quantified(self, instance_names: Iterable[str]) -> None:
+        """Mark the instances as quantified in-place."""
+        self.quantified_instances.update(instance_names)
 
     def get_node_for_instance(self, instance_name: str) -> Node:
         return self.instance_node_map[instance_name]
 
-    def is_instance_projective(self, instance_name: str) -> bool:
-        return instance_name not in self.non_projective_instances
+    def is_instance_rendered(self, instance_name: str) -> bool:
+        return instance_name in self.rendered_instances
+
+    def is_instance_quantified(self, instance_name: str) -> bool:
+        return instance_name in self.quantified_instances
 
     def get_instance_depth(self, instance_name: str) -> int:
         return self.instance_depths_map[instance_name]
 
-    def get_instances_at_node_scope(self, node: Node | None) -> list[str]:
+    def get_instances_at_scope(self, node: Node | None) -> set[str]:
         # None as the node means the widest possible scope
         return self.scope_instance_map[node[0] if node else None]
+
+    def get_instances_to_quantify_at_scope(self, scope: Node | None) -> set[str]:
+        """Get the instances that should be quantified at the given scope."""
+        instances = self.get_instances_at_scope(scope)
+        return instances - self.quantified_instances
 
 
 def _build_scope_instance_map(
@@ -103,7 +113,7 @@ def _build_scope_instance_map(
     instance_node_map: dict[str, Node],
     coreferent_instances: frozenset[str],
     override_is_projective_callback: Optional[OverrideIsProjectiveCallback],
-) -> dict[str | None, list[str]]:
+) -> dict[str | None, set[str]]:
     """
     Build a map of the scope (instance name of the node in the tree this variable should be scoped) to a list of instances
     Takes into account any overrides provided by the override_is_projective_callback
@@ -124,7 +134,7 @@ def _build_scope_instance_map(
                 scope = None
         instance_scope_map[instance] = scope
 
-    scope_instance_map: dict[str | None, list[str]] = defaultdict(list)
+    scope_instance_map: dict[str | None, set[str]] = defaultdict(set)
     for instance, scope in instance_scope_map.items():
-        scope_instance_map[scope].append(instance)
+        scope_instance_map[scope].add(instance)
     return scope_instance_map

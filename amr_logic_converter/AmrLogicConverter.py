@@ -5,7 +5,7 @@ from functools import reduce
 from typing import Callable, Optional, Union, cast
 
 import penman
-from penman.tree import Tree, Node
+from penman.tree import Tree, Node, Branch
 from penman.graph import Graph
 
 from amr_logic_converter.AmrContext import (
@@ -19,6 +19,7 @@ from amr_logic_converter.types import (
     ConstantType,
     Exists,
     Clause,
+    Implies,
     Not,
     Predicate,
     Variable,
@@ -50,6 +51,7 @@ class OverrideConjunctionCallbackInfo:
     predicate_term: Atom
     closure_term: Clause | None
     subterms: list[Clause]
+    condition_term: Clause | None
     instance_name: str
     bound_instance: Variable | Constant
     node: Node
@@ -93,6 +95,7 @@ class AmrLogicConverter:
     use_variables_for_instances: bool
     maximally_hoist_coreferences: bool
     capitalize_variables: bool
+    use_implies_for_conditions: bool
     override_is_projective: Optional[OverrideIsProjectiveCallback]
     override_quantification: Optional[OverrideQuantificationCallback]
     override_conjunction: Optional[OverrideConjunctionCallback]
@@ -104,6 +107,7 @@ class AmrLogicConverter:
         use_variables_for_instances: bool = False,
         maximally_hoist_coreferences: bool = False,
         capitalize_variables: bool = True,
+        use_implies_for_conditions: bool = False,
         override_is_projective: Optional[OverrideIsProjectiveCallback] = None,
         override_quantification: Optional[OverrideQuantificationCallback] = None,
         override_conjunction: Optional[OverrideConjunctionCallback] = None,
@@ -112,6 +116,7 @@ class AmrLogicConverter:
         self.capitalize_variables = capitalize_variables
         self.existentially_quantify_instances = existentially_quantify_instances
         self.use_variables_for_instances = use_variables_for_instances
+        self.use_implies_for_conditions = use_implies_for_conditions
         self.maximally_hoist_coreferences = maximally_hoist_coreferences
         self.override_is_projective = override_is_projective
         self.override_quantification = override_quantification
@@ -128,13 +133,25 @@ class AmrLogicConverter:
         )
         return bound_instance
 
+    def _reprioritize_edge(self, edge: Branch) -> int:
+        """Reprioritize edges to make it possible to change where in the tree coreferenced instances are defined"""
+        role = edge[0]
+        # make sure :condition is processed first if we're rewriting using Implies
+        if self.use_implies_for_conditions and role == ":condition":
+            return 1
+        return 0
+
+    def _sort_edges(self, edges: list[Branch], reverse: bool = True) -> list[Branch]:
+        """Sort edges by reprioritized edge priority"""
+        return sorted(edges, key=self._reprioritize_edge, reverse=reverse)
+
     def _var_name(self, name: str) -> str:
         return name.capitalize() if self.capitalize_variables else name
 
     def _convert_amr_assertive(
         self,
         ctx: AmrContext,
-        node: Node,
+        instance_name: str,
         closure: Optional[Callable[[str], Clause | None]] = None,
     ) -> Clause | None:
         # handle 7.2, 7.6-7.8 from "Expressive Power of Abstract Meaning Representations"
@@ -142,18 +159,19 @@ class AmrLogicConverter:
         # ∥(x\P),φ∥↓ = φ(x)
         # ∥(x\P :RiAi),φ∥↓ = φ(x)
         # ∥(x\P :RiAi :polarity–),φ∥↓ = φ(x)
-        instance_name, instance_info = node
-        instance_predicate, *edges = instance_info
-        is_projective_instance = ctx.is_instance_projective(instance_name)
-        if is_projective_instance:
+        if ctx.is_instance_rendered(instance_name):
             return None if closure is None else closure(instance_name)
+        node = ctx.get_node_for_instance(instance_name)
+        instance_predicate, *edges = node[1]
         bound_instance = self._get_bound_instance(instance_name)
         predicate = Predicate.from_amr_str(instance_predicate[1])
         predicate_term = predicate(bound_instance)
         closure_term = closure(instance_name) if closure is not None else None
-        sub_terms: list[Clause] = []
+        subterms: list[Clause] = []
+        condition_term: Clause | None = None
 
-        for role, target in edges:
+        ctx.mark_instance_rendered(instance_name)
+        for (role, target) in self._sort_edges(edges):
 
             def sub_closure(u: str) -> Atom:
                 target: Variable | Constant = self._get_bound_instance(u)
@@ -161,28 +179,39 @@ class AmrLogicConverter:
                 atom = sub_predicate(bound_instance, target)
                 return normalize_atom(atom) if self.invert_relations else atom
 
+            # don't include the :condition relation in the logic if we're turning it into an implication
+            target_closure: Callable[[str], Atom] | None = sub_closure
+            if role == ":condition" and self.use_implies_for_conditions:
+                target_closure = None
+
+            target_instance = _get_instance_name(target, ctx)
+            subterm: Clause | None = None
             # special case for the :polarity - attribute.
             # skip polarity as is handled in quantification
             if role == ":polarity" and target == "-":
                 continue
-            elif type(target) is tuple:
-                sub_terms.append(self._convert_amr(ctx, target, sub_closure))
-            elif target in ctx.instances:
-                sub_terms.append(sub_closure(target))
+            elif target_instance is not None:
+                target_node = ctx.get_node_for_instance(target_instance)
+                subterm = self._convert_amr(ctx, target_node, target_closure)
             else:
                 sub_predicate = Predicate.from_amr_str(role)
                 sub_atom = sub_predicate(
                     bound_instance, Constant(target, determine_const_type(target))
                 )
-                sub_terms.append(
+                subterm = (
                     normalize_atom(sub_atom) if self.invert_relations else sub_atom
                 )
+            if role == ":condition":
+                condition_term = subterm
+            else:
+                subterms.append(subterm)
 
         if self.override_conjunction is not None:
             info = OverrideConjunctionCallbackInfo(
                 predicate_term=predicate_term,
                 closure_term=closure_term,
-                subterms=sub_terms,
+                subterms=subterms,
+                condition_term=condition_term,
                 instance_name=instance_name,
                 bound_instance=bound_instance,
                 depth=ctx.get_instance_depth(instance_name),
@@ -196,8 +225,13 @@ class AmrLogicConverter:
         pre_terms = []
         if closure_term is not None:
             pre_terms.append(closure_term)
+        if condition_term is not None and not self.use_implies_for_conditions:
+            pre_terms.append(condition_term)
         pre_terms.append(predicate_term)
-        return And(*(pre_terms + sub_terms))
+        conjunction = And(*(pre_terms + subterms))
+        if condition_term is not None and self.use_implies_for_conditions:
+            return Implies(condition_term, conjunction)
+        return conjunction
 
     def _quantify_instance(
         self,
@@ -208,7 +242,7 @@ class AmrLogicConverter:
         _instance_predicate, *edges = node[1]
         bound_instance = self._get_bound_instance(instance_name)
         polarity = True
-        for role, target in edges:
+        for role, target in self._sort_edges(edges):
             if role == ":polarity" and target == "-":
                 polarity = False
 
@@ -235,14 +269,15 @@ class AmrLogicConverter:
         return quantification_closure
 
     def _quanitfy_formula(
-        self, ctx: AmrContext, formula: Clause, instances: list[str]
+        self, ctx: AmrContext, formula: Clause, instances: set[str]
     ) -> Clause:
         """Wrap the formula in quantifiers for all instances in the list"""
         sorted_instances = sorted(
-            instances,
+            sorted(instances),  # sort alphabetically as a tie-breaker
             key=lambda instance: ctx.get_instance_depth(instance),
             reverse=True,
         )
+
         return reduce(
             lambda formula, instance_name: self._quantify_instance(ctx, instance_name)(
                 formula
@@ -259,31 +294,29 @@ class AmrLogicConverter:
     ) -> Callable[[Clause | None], Clause | None]:
         instance_name, instance_info = node
         # only project instances at their specific scope
-        projections_for_context = ctx.get_instances_at_node_scope(context_node)
+        projections_for_context = ctx.get_instances_at_scope(context_node)
 
         edges = instance_info[1:]
-        is_projective = ctx.is_instance_projective(instance_name)
         cur_closure = lambda x: x
-        if is_projective and instance_name in projections_for_context:
+        if instance_name in projections_for_context:
             # handle 8.6-8.8 from "Expressive Power of Abstract Meaning Representations"
             # ∥(x\P :RiAi)∥↑ = λp.∥(x/P :RiAi),λx.p∥↓
-            non_projective_ctx = ctx.mark_instance_non_projective(instance_name)
             cur_closure = lambda u: self._convert_amr_assertive(
-                non_projective_ctx, node, lambda x: u
+                ctx, instance_name, lambda x: u
             )
 
         def args_closure(p: Clause | None) -> Clause | None:
             # handle 8.3-8.5 from "Expressive Power of Abstract Meaning Representations"
             # ∥(x/P :RiAi)∥↑ = λp.∥A1∥↑(∥A2∥↑( ...∥An∥↑(p)))
             # don't need to worry about iterating over non-nodes since those are just λp.p
-            result = p
-            for edge in edges:
+            result = cur_closure(p)
+            for edge in self._sort_edges(edges, reverse=False):
                 if type(edge[1]) is tuple:
                     sub_closure = self._convert_amr_projective(
                         ctx, edge[1], context_node
                     )
                     result = sub_closure(result)
-            return cur_closure(result)
+            return result
 
         return args_closure
 
@@ -293,12 +326,13 @@ class AmrLogicConverter:
         node: Node,
         assertive_closure: Optional[Callable[[str], Clause]] = None,
     ) -> Clause:
+        instances_to_quantify = ctx.get_instances_to_quantify_at_scope(node)
+        ctx.mark_instances_quantified(instances_to_quantify)
         projective_closure = self._convert_amr_projective(ctx, node, node)
-        instances_to_quantify = ctx.get_instances_at_node_scope(node)
         base_formula = cast(
             Clause,
             projective_closure(
-                self._convert_amr_assertive(ctx, node, assertive_closure)
+                self._convert_amr_assertive(ctx, node[0], assertive_closure)
             ),
         )
         return self._quanitfy_formula(ctx, base_formula, instances_to_quantify)
@@ -310,30 +344,27 @@ class AmrLogicConverter:
             Callable[[Clause], Clause], self._convert_amr_projective(ctx, node, None)
         )
 
-    def _override_scope_callback(
+    def _override_is_projective(
         self, info: OverrideIsProjectiveCallbackInfo
     ) -> bool | None:
         override: bool | None = None
         if self.maximally_hoist_coreferences and info.is_coreferent:
             override = True
         if self.override_is_projective is not None:
-            override_res = self.override_is_projective(info)
-            if override_res is True:
-                override = True
-            # setting False should override maximally_hoist_coreferences
-            elif override_res is False:
-                override = None
+            callback_res = self.override_is_projective(info)
+            if callback_res is not None:
+                override = callback_res
         return override
 
     def convert_amr_tree(self, amr_tree: Tree) -> Clause:
         ctx = AmrContext.from_amr_tree(
-            amr_tree, override_is_projective=self._override_scope_callback
+            amr_tree, override_is_projective=self._override_is_projective
         )
 
         # special case to handle maximally projected instances
         maximal_projection = self._maximally_project_amr(ctx, amr_tree.node)
         formula = maximal_projection(self._convert_amr(ctx, amr_tree.node))
-        maximum_scope_instances = ctx.get_instances_at_node_scope(None)
+        maximum_scope_instances = ctx.get_instances_at_scope(None)
         return self._quanitfy_formula(ctx, formula, maximum_scope_instances)
 
     def convert_amr_str(self, amr_str: str) -> Clause:
@@ -350,3 +381,11 @@ class AmrLogicConverter:
             raise TypeError(
                 f"Expected amr to be a string, Tree, or Graph. Got {type(amr)}"
             )
+
+
+def _get_instance_name(target: Node | str, ctx: AmrContext) -> str | None:
+    if type(target) is tuple:
+        return target[0]
+    if target in ctx.instances:
+        return target
+    return None
