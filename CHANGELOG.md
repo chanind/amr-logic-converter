@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.1 (2022-12-05)
+### Fix
+* Fixing negation with annotations ([`61282ee`](https://github.com/chanind/amr-logic-converter/commit/61282ee2444bc345110613a8ac0fb9aded12cb57))
+
 ## v0.10.0 (2022-12-04)
 ### Feature
 * Removing unnecessary param from override_conjunction ([`155452a`](https://github.com/chanind/amr-logic-converter/commit/155452a0c1df1bd4f461a3c0e1d49fd1d1e6aacd))
