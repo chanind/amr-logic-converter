@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from functools import reduce
-from typing import Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union, cast
 
 import penman
 from penman.tree import Tree, Node, Branch
@@ -188,7 +188,7 @@ class AmrLogicConverter:
             subterm: Clause | None = None
             # special case for the :polarity - attribute.
             # skip polarity as is handled in quantification
-            if role == ":polarity" and target == "-":
+            if _is_negation(role, target):
                 continue
             elif target_instance is not None:
                 target_node = ctx.get_node_for_instance(target_instance)
@@ -243,7 +243,7 @@ class AmrLogicConverter:
         bound_instance = self._get_bound_instance(instance_name)
         polarity = True
         for role, target in self._sort_edges(edges):
-            if role == ":polarity" and target == "-":
+            if _is_negation(role, target):
                 polarity = False
 
         def quantification_closure(clause: Clause) -> Clause:
@@ -389,3 +389,7 @@ def _get_instance_name(target: Node | str, ctx: AmrContext) -> str | None:
     if target in ctx.instances:
         return target
     return None
+
+
+def _is_negation(role: str, target: Any) -> bool:
+    return role == ":polarity" and isinstance(target, str) and target[0] == "-"

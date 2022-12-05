@@ -110,6 +110,17 @@ def test_convert_amr_with_negation() -> None:
     assert str(logic) == expected
 
 
+def test_convert_amr_with_negation_with_annotation_markers() -> None:
+    amr_str = """
+    (e / giggle-01~1
+        :polarity -~2
+        :ARG0 (x / boy~3))
+    """
+    expected = "¬∃e(giggle-01(e) ∧ ∃x(:ARG0(e, x) ∧ boy(x)))"
+    logic = converter.convert(amr_str)
+    assert str(logic) == expected
+
+
 def test_convert_amr_with_negation_maintains_negation_scope_when_inverted() -> None:
     amr_str = """
     (x / boy
