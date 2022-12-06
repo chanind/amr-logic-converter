@@ -18,6 +18,10 @@ converter = AmrLogicConverter(
     existentially_quantify_instances=True, capitalize_variables=False
 )
 
+implication_converter = AmrLogicConverter(
+    existentially_quantify_instances=True, use_implies_for_conditions=True
+)
+
 
 def test_convert_basic_amr() -> None:
     amr_str = """
@@ -388,10 +392,37 @@ def test_convert_amr_with_conditionals() -> None:
         )
     )
     """
-    implication_converter = AmrLogicConverter(
-        existentially_quantify_instances=True,
-        use_implies_for_conditions=True,
-        use_variables_for_instances=True,
-    )
     logic = implication_converter.convert(amr_str)
+    assert fmt_logic(str(logic)) == fmt_logic(expected)
+
+
+def test_convert_amr_where_condition_coreferences_its_own_node() -> None:
+    amr_str = """
+    (e2 / expect-01~2
+        :ARG1 (p / participate-01~4
+            :ARG0 (p2 / person~0)
+            :ARG1 (e / event~8)
+            :condition (a / ask-02~15
+                :ARG1 p
+                :ARG2 p2))))
+    """
+    expected = """
+    ∃E2(
+        expect-01(E2) ∧
+        ∃P(
+            ∃P2(
+                ∃A(
+                    participate-01(P) ∧ ask-02(A) ∧ :ARG1(A, P) ∧ person(P2) ∧ :ARG2(A, P2)
+                ) → (
+                    :ARG1(E2, P) ∧ :ARG0(P, P2) ∧
+                    ∃E(
+                        :ARG1(P, E) ∧ event(E)
+                    )
+                )
+            )
+        )
+    )
+    """
+    logic = implication_converter.convert(amr_str)
+    print(logic)
     assert fmt_logic(str(logic)) == fmt_logic(expected)

@@ -10,6 +10,7 @@ from amr_logic_converter.extract_instances_from_amr_tree import (
 )
 from amr_logic_converter.find_instance_depths import find_instance_depths
 from amr_logic_converter.find_coreferent_instances import find_coreferent_instances
+from amr_logic_converter.map_contained_coreferences import map_contained_coreferences
 from amr_logic_converter.map_instances_lca import map_instances_lca
 from amr_logic_converter.map_instances_to_nodes import map_instances_to_nodes
 
@@ -42,6 +43,8 @@ class AmrContext:
     coreferent_instances: frozenset[str]
     instance_node_map: dict[str, Node]
     instance_depths_map: dict[str, int]
+    # a map of which instances are corefereneced within the AMR defining a given instance
+    contained_coreferences_map: dict[str, frozenset[str]]
     # a map of the scope (instance name of the node in the tree this variable should be scoped) to a list of instances
     # `None` as the scope means the instance should be scoped around the entire tree
     scope_instance_map: dict[str | None, set[str]]
@@ -59,6 +62,7 @@ class AmrContext:
         instance_node_map = map_instances_to_nodes(amr_tree, instances)
         instance_depths_map = find_instance_depths(amr_tree, instances)
         instance_lca_map = map_instances_lca(amr_tree, instances)
+        contained_coreferences_map = map_contained_coreferences(amr_tree, instances)
         scope_instance_map = _build_scope_instance_map(
             amr_tree=amr_tree,
             instance_lca_map=instance_lca_map,
@@ -74,6 +78,7 @@ class AmrContext:
             instance_node_map=instance_node_map,
             instance_depths_map=instance_depths_map,
             scope_instance_map=scope_instance_map,
+            contained_coreferences_map=contained_coreferences_map,
         )
 
     def mark_instance_rendered(self, instance_name: str) -> None:
