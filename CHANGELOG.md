@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.2 (2022-12-08)
+### Fix
+* Perf / logging noise improvement skipping penman graph conversion to extract instances ([`33a61ea`](https://github.com/chanind/amr-logic-converter/commit/33a61ea5748385c7d6a8d4e1da7e8af88dbf70ac))
+
 ## v0.10.1 (2022-12-05)
 ### Fix
 * Fixing negation with annotations ([`61282ee`](https://github.com/chanind/amr-logic-converter/commit/61282ee2444bc345110613a8ac0fb9aded12cb57))
