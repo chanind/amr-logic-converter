@@ -1,6 +1,6 @@
 # AMR Logic Converter
 
-[![ci](https://img.shields.io/github/workflow/status/chanind/amr-logic-converter/CI/main)](https://github.com/chanind/amr-logic-converter)
+[![ci](https://img.shields.io/github/actions/workflow/status/chanind/amr-logic-converter/ci.yaml?branch=main)](https://github.com/chanind/amr-logic-converter)
 [![Codecov](https://img.shields.io/codecov/c/github/chanind/amr-logic-converter/main)](https://codecov.io/gh/chanind/amr-logic-converter)
 [![PyPI](https://img.shields.io/pypi/v/amr-logic-converter?color=blue)](https://pypi.org/project/amr-logic-converter/)
 
