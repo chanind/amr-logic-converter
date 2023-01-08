@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.10.3 (2023-01-08)
+### Fix
+* Shields.io badge in docs ([`64fbc32`](https://github.com/chanind/amr-logic-converter/commit/64fbc323ac31a443d366d85def4601c50684c2c0))
+
 ## v0.10.2 (2022-12-08)
 ### Fix
 * Perf / logging noise improvement skipping penman graph conversion to extract instances ([`33a61ea`](https://github.com/chanind/amr-logic-converter/commit/33a61ea5748385c7d6a8d4e1da7e8af88dbf70ac))
