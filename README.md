@@ -138,3 +138,17 @@ This project uses [poetry](https://python-poetry.org/) for dependency management
 ## License
 
 This project is licenced under a MIT license.
+
+## Citation
+If you use this software in your work, please cite the following:
+
+```bibtex
+@misc{chanin2023neurosymbolic,
+      title={Neuro-symbolic Commonsense Social Reasoning}, 
+      author={David Chanin and Anthony Hunter},
+      year={2023},
+      eprint={2303.08264},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI}
+}
+```
