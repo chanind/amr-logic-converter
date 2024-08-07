@@ -2,6 +2,13 @@
 
 
 
+## v0.11.2 (2024-08-07)
+
+### Fix
+
+* fix: fixing semantic release config ([`5dbda6a`](https://github.com/chanind/amr-logic-converter/commit/5dbda6a624812084b87549ca2e628a8da71ff1fa))
+
+
 ## v0.11.1 (2024-08-07)
 
 ### Fix
