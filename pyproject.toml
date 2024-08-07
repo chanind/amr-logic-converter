@@ -33,7 +33,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.semantic_release]
-version_variable = [
+version_variables = [
     "amr_logic_converter/__init__.py:__version__",
     "pyproject.toml:version",
 ]
