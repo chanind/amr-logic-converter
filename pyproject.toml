@@ -5,12 +5,18 @@ description = "Convert Abstract Meaning Representation (AMR) into first-order lo
 license = "MIT"
 readme = "README.md"
 authors = ["David Chanin <chanindav@gmail.com>"]
-keywords = ["amr", "logic", "first-order-logic", "nlp", "abstract-meaning-representation"]
+keywords = [
+    "amr",
+    "logic",
+    "first-order-logic",
+    "nlp",
+    "abstract-meaning-representation",
+]
 repository = "https://github.com/chanind/amr-logic-converter"
 homepage = "https://github.com/chanind/amr-logic-converter"
 
 [tool.poetry.dependencies]
-python = ">=3.7, <4.0"
+python = ">=3.10, <4.0"
 Penman = "^1.2.2"
 typing-extensions = ">=3.7.4"
 
@@ -29,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.semantic_release]
 version_variable = [
     "amr_logic_converter/__init__.py:__version__",
-    "pyproject.toml:version"
+    "pyproject.toml:version",
 ]
 branch = "main"
 upload_to_pypi = true
