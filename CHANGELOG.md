@@ -2,6 +2,13 @@
 
 
 
+## v0.11.1 (2024-08-07)
+
+### Fix
+
+* fix: bump for release ([`56d444d`](https://github.com/chanind/amr-logic-converter/commit/56d444d366f6abaa02145cb09e690a0795677e25))
+
+
 ## v0.11.0 (2024-08-07)
 
 ### Chore
