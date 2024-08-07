@@ -6,6 +6,8 @@ license = "MIT"
 readme = "README.md"
 authors = ["David Chanin <chanindav@gmail.com>"]
 keywords = ["amr", "logic", "first-order-logic", "nlp", "abstract-meaning-representation"]
+repository = "https://github.com/chanind/amr-logic-converter"
+homepage = "https://github.com/chanind/amr-logic-converter"
 
 [tool.poetry.dependencies]
 python = ">=3.7, <4.0"
